@@ -26,6 +26,13 @@ async def list_apps(user: User = Depends(get_current_user), db: DBSession = Depe
             private = repo_data.get("private", False)
         except Exception:
             pass
+
+        unresolved_count = (
+            db.query(Incident)
+            .filter(Incident.app_id == app.id, Incident.status != "resolved")
+            .count()
+        )
+
         results.append({
             "id": app.id,
             "repo_owner": app.repo_owner,
@@ -36,6 +43,7 @@ async def list_apps(user: User = Depends(get_current_user), db: DBSession = Depe
             "permissions": permissions,
             "instrumented": app.instrumented,
             "live_url": app.live_url,
+            "unresolved_count": unresolved_count,
             "created_at": app.created_at.isoformat() if app.created_at else None,
         })
     return results

@@ -51,7 +51,7 @@ interface IncidentData {
 }
 
 type CardState = "waiting" | "active" | "complete" | "error";
-type TabMode = "setup" | "incidents" | "fixes";
+type TabMode = "setup" | "incidents";
 
 function Spinner({ className = "h-5 w-5" }: { className?: string }) {
   return (
@@ -69,16 +69,16 @@ function Spinner({ className = "h-5 w-5" }: { className?: string }) {
 
 function Checkmark() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M20 6L9 17l-5-5" stroke="#6ee7b7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20 6L9 17l-5-5" stroke="#6ee7b7" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 function ErrorIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M18 6L6 18M6 6l12 12" stroke="#fca5a5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M18 6L6 18M6 6l12 12" stroke="#fca5a5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -95,38 +95,55 @@ function StepCard({
   children?: React.ReactNode;
 }) {
   const borderColor = {
-    waiting: "border-white/5",
-    active: "border-yellow-500/40",
-    complete: "border-emerald-500/30",
-    error: "border-red-500/30",
+    waiting: "border-white/15",
+    active: "border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.05)]",
+    complete: "border-white/5",
+    error: "border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.05)]",
   }[state];
 
   const bgColor = {
-    waiting: "bg-white/[0.02]",
-    active: "bg-yellow-950/20",
-    complete: "bg-emerald-950/20",
-    error: "bg-red-950/20",
+    waiting: "bg-white/[0.05]",
+    active: "bg-yellow-500/[0.08]",
+    complete: "bg-white/[0.02]",
+    error: "bg-red-500/[0.08]",
   }[state];
 
-  const textColor = state === "waiting" ? "text-zinc-600" : "text-white";
+  const textColor = state === "complete" ? "text-zinc-600" : "text-white";
+  const iconBg = {
+    waiting: "bg-white/10",
+    active: "bg-yellow-500/20",
+    complete: "bg-zinc-800",
+    error: "bg-red-500/20",
+  }[state];
+  
+  const iconColor = {
+    waiting: "text-white/60",
+    active: "text-yellow-400",
+    complete: "text-zinc-600",
+    error: "text-red-400",
+  }[state];
 
   return (
-    <div className={`rounded-xl border ${borderColor} ${bgColor} px-6 py-5 transition-all duration-300`}>
-      <div className="flex items-center gap-5">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-zinc-400">
+    <div className={`rounded-xl border ${borderColor} ${bgColor} px-4 py-3 transition-all duration-500 backdrop-blur-sm ${state === "complete" ? "opacity-40" : "opacity-100"}`}>
+      <div className="flex items-center gap-4">
+        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${iconBg} ${iconColor}`}>
           {state === "complete" ? (
             <Checkmark />
           ) : state === "error" ? (
             <ErrorIcon />
           ) : state === "active" ? (
-            <Spinner className="h-4 w-4 text-yellow-400" />
+            <Spinner className="h-3.5 w-3.5" />
           ) : (
-            step
+            <span className="text-[11px] font-accent">{step}</span>
           )}
         </div>
-        <div className="flex flex-col gap-1">
-          <h3 className={`text-sm font-semibold ${textColor}`}>{title}</h3>
-          {children}
+        <div className="flex flex-col min-w-0">
+          <h3 className={`text-sm font-semibold tracking-tight ${textColor}`}>{title}</h3>
+          {children && (
+            <div className="text-[11px] leading-tight transition-colors duration-500 mt-0.5">
+              {children}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -180,23 +197,21 @@ function IncidentRow({
   token,
   onDelete,
   onResolve,
-  isFix,
 }: {
   incident: IncidentData;
   appId: string;
   token: string;
   onDelete: (id: number) => void;
   onResolve: (id: number) => void;
-  isFix: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [resolving, setResolving] = useState(false);
   const isResolved = incident.status === "resolved";
+  const isQueued = incident.status === "open";
   const latestAnalysis = incident.analyses?.[0] ?? null;
 
   const statusLabel: Record<string, { text: string; color: string }> = {
-    open: { text: "Open", color: "text-red-400" },
+    open: { text: "Queued", color: "text-zinc-500" },
     analyzing: { text: "Analyzing", color: "text-yellow-400" },
     pr_created: { text: "PR Ready", color: "text-blue-400" },
     resolved: { text: "Resolved", color: "text-emerald-400" },
@@ -228,26 +243,26 @@ function IncidentRow({
   }
 
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] transition-all duration-200">
+    <div className={`rounded-xl border border-white/5 transition-all duration-200 ${expanded ? "bg-white/10" : "bg-white/[0.02]"} ${isQueued || isResolved ? "opacity-60" : "opacity-100"}`}>
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full px-5 py-4 text-left"
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className={`h-2 w-2 shrink-0 rounded-full ${isResolved ? "bg-emerald-500" : incident.status === "analyzing" ? "bg-yellow-500 animate-pulse" : incident.status === "pr_created" ? "bg-blue-500" : "bg-red-500"}`} />
-            <p className="text-sm text-white truncate">{incident.error_message}</p>
+            <div className={`h-2 w-2 shrink-0 rounded-full ${isResolved ? "bg-emerald-500" : incident.status === "analyzing" ? "bg-yellow-500 animate-pulse" : incident.status === "pr_created" ? "bg-blue-500" : "bg-zinc-600"}`} />
+            <p className={`text-sm truncate ${isResolved || isQueued ? "text-zinc-500" : "text-white"}`}>{incident.error_message}</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${st.color}`}>{st.text}</span>
+            <span className={`text-[10px] font-bold tracking-wider ${st.color}`}>{st.text}</span>
             <span className="text-xs text-zinc-500">{formatLabel(incident.source)}</span>
-            {incident.created_at && !isFix && (
-              <span className="text-xs text-zinc-500 font-mono tabular-nums">
+            {incident.created_at && !isResolved && (
+              <span className="text-xs text-zinc-500 tabular-nums">
                 <LiveDuration startStr={incident.created_at} />
               </span>
             )}
-            {isFix && incident.created_at && incident.resolved_at && (
-              <span className="text-xs text-zinc-500 font-mono tabular-nums">
+            {isResolved && incident.created_at && incident.resolved_at && (
+              <span className="text-xs text-zinc-500 tabular-nums">
                 {formatDuration(incident.created_at, incident.resolved_at)}
               </span>
             )}
@@ -280,7 +295,7 @@ function IncidentRow({
           {/* Logs section */}
           {incident.logs && (
             <div>
-              <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">Logs</h4>
+              <h4 className="text-[10px] font-bold tracking-wider text-zinc-500 mb-2">Logs</h4>
               <pre className="text-xs text-zinc-400 bg-white/[0.03] rounded-lg p-3 overflow-x-auto max-h-40 whitespace-pre-wrap">
                 {JSON.stringify(incident.logs, null, 2)}
               </pre>
@@ -290,7 +305,7 @@ function IncidentRow({
           {/* Stack trace */}
           {incident.stack_trace && (
             <div>
-              <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">Stack Trace</h4>
+              <h4 className="text-[10px] font-bold tracking-wider text-zinc-500 mb-2">Stack Trace</h4>
               <pre className="text-xs text-zinc-400 bg-white/[0.03] rounded-lg p-3 overflow-x-auto max-h-48 whitespace-pre-wrap">
                 {incident.stack_trace}
               </pre>
@@ -302,7 +317,7 @@ function IncidentRow({
             <div className="space-y-3">
               {latestAnalysis.root_cause && (
                 <div className="bg-white/[0.03] rounded-lg p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 mb-1">Root Cause</p>
+                  <p className="text-[10px] font-bold tracking-wider text-zinc-600 mb-1">Root Cause</p>
                   <p className="text-xs text-zinc-300">{latestAnalysis.root_cause}</p>
                 </div>
               )}
@@ -321,7 +336,7 @@ function IncidentRow({
                   <button
                     onClick={(e) => { e.stopPropagation(); handleResolve(); }}
                     disabled={resolving}
-                    className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-50"
+                    className="px-4 py-1.5 text-[10px] tracking-wider rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-50 font-accent"
                   >
                     {resolving ? "Merging..." : "Accept PR & Resolve"}
                   </button>
@@ -353,30 +368,15 @@ function IncidentRow({
 
           {/* Delete button */}
           <div className="flex justify-end pt-2 border-t border-white/5">
-            {!confirmingDelete ? (
-              <button
-                onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true); }}
-                className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 hover:text-red-400 transition-colors"
-              >
-                Delete
-              </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-zinc-500">Are you sure?</span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDelete(); }}
-                  className="text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-300 transition-colors"
-                >
-                  Yes, delete
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setConfirmingDelete(false); }}
-                  className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+              className="text-zinc-600 hover:text-red-400 transition-colors p-1"
+              title="Delete incident"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </div>
         </div>
       )}
@@ -418,10 +418,10 @@ function BuildPage() {
       .catch(() => setError("Failed to load app details"));
   }, [appId, router, token]);
 
-  // Fetch incidents when switching to incidents/fixes tab, then poll every 5s
+  // Fetch incidents when switching to incidents tab, then poll every 5s
   useEffect(() => {
     if (!token) return;
-    if (tab !== "incidents" && tab !== "fixes") return;
+    if (tab !== "incidents") return;
 
     const fetchIncidents = () => {
       fetch(`${API_BASE}/apps/${appId}/incidents`, {
@@ -558,9 +558,9 @@ function BuildPage() {
   if (error) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#09090b] gap-4">
-        <p className="text-sm font-bold uppercase tracking-wider text-red-500">{error}</p>
-        <button onClick={() => router.push("/dashboard")} className="text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-white transition-colors underline">
-          Back to Dashboard
+        <p className="text-sm font-bold tracking-wider text-red-500">{error}</p>
+        <button onClick={() => router.push("/dashboard")} className="text-xs tracking-widest text-zinc-400 hover:text-white transition-colors underline font-accent">
+          Back
         </button>
       </div>
     );
@@ -569,66 +569,77 @@ function BuildPage() {
   if (!app) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#09090b]">
-        <Spinner className="h-5 w-5 text-zinc-500" />
+        <Spinner className="h-5 w-5 text-zinc-400" />
       </div>
     );
   }
 
   const [card1, card2, card3] = getCardStates(app.pipeline_step);
 
-  const activeIncidents = incidents.filter((i) => i.status !== "resolved");
-  const resolvedIncidents = incidents.filter((i) => i.status === "resolved");
+  // Deduplicate and Sort Incidents
+  const uniqueIncidents = Array.from(new Map(incidents.map((i) => [i.id, i])).values());
+  const sortedIncidents = [...uniqueIncidents].sort((a, b) => {
+    const statusOrder: Record<string, number> = {
+      pr_created: 0,
+      analyzing: 1,
+      open: 2,
+      resolved: 3,
+    };
+    const orderA = statusOrder[a.status] ?? 99;
+    const orderB = statusOrder[b.status] ?? 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
+  });
+
+  const activeCount = uniqueIncidents.filter((i) => i.status !== "resolved").length;
 
   const tabs: { key: TabMode; label: string; count?: number }[] = [
     { key: "setup", label: "Set Up" },
-    { key: "incidents", label: "Incidents", count: activeIncidents.length },
-    { key: "fixes", label: "Fixes", count: resolvedIncidents.length },
+    { key: "incidents", label: "Incidents", count: activeCount },
   ];
 
   return (
-    <div className="min-h-screen bg-[#09090b] font-sans animate-in fade-in duration-500">
+    <div className="min-h-screen bg-[#09090b] font-sans animate-in fade-in duration-1000">
       <div className="mx-auto w-full max-w-[1100px] px-8 py-12 sm:px-12 lg:px-16">
         {/* Back link */}
         <button
           onClick={() => router.push("/dashboard")}
-          className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-white transition-colors mb-12"
+          className="flex items-center gap-2 text-xs tracking-widest text-zinc-400 hover:text-white transition-colors mb-12 font-accent"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          Back to Dashboard
+          Back
         </button>
 
         {/* App name */}
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-3xl font-bold text-white tracking-tight">{app.full_name}</h1>
           <div className="flex items-center gap-2">
-            <span className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest bg-white/[0.03] text-zinc-500 border border-white/5">
+            <span className="shrink-0 rounded-full px-3 py-1 text-[9px] tracking-widest bg-white/20 text-white/80 border border-white/10 font-accent">
               App ID: {app.id}
             </span>
           </div>
         </div>
-        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-12">
+        <p className="text-[14px] text-zinc-400 tracking-[0.05em] mb-12 font-accent">
           Project Deployment & Monitoring
         </p>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-10 border-b border-white/5">
+        <div className="flex gap-1 mb-10 border-b border-white/10">
           {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`px-6 py-3 text-[10px] font-bold uppercase tracking-widest transition-all relative flex items-center gap-2 ${
+              className={`px-6 py-3 text-[10px] font-medium tracking-widest transition-all relative flex items-center gap-2 ${
                 tab === t.key
                   ? "text-white"
-                  : "text-zinc-500 hover:text-zinc-300"
+                  : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
               {t.label}
               {t.count !== undefined && t.count > 0 && (
-                <span className={`text-[10px] font-bold ${
-                  t.key === "incidents" ? "text-red-400" : "text-emerald-400"
-                }`}>
+                <span className="text-[10px] font-bold text-red-400">
                   {t.count}
                 </span>
               )}
@@ -641,20 +652,23 @@ function BuildPage() {
 
         {/* Tab content */}
         {tab === "setup" && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2.5">
             <StepCard step={1} title="Integrating Error Listeners" state={card1}>
               {card1 === "active" && (
-                <p className="text-xs text-zinc-400">
+                <p className="text-zinc-300">
                   Creating instrumentation files and opening a PR on your repository...
                 </p>
               )}
               {card1 === "complete" && (
-                <p className="text-xs text-emerald-400">Instrumentation PR created.</p>
+                <p className="text-zinc-500">Instrumentation PR created.</p>
               )}
               {card1 === "error" && (
-                <p className="text-xs text-red-400">
+                <p className="text-red-400">
                   Failed to create instrumentation PR. You can retry by refreshing the page.
                 </p>
+              )}
+              {card1 === "waiting" && (
+                <p className="text-zinc-400">Wait for instrumentation to begin.</p>
               )}
             </StepCard>
 
@@ -665,31 +679,37 @@ function BuildPage() {
                     href={app.pr_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-zinc-400 underline hover:text-white transition-colors"
+                    className="text-zinc-300 underline hover:text-white transition-colors"
                   >
                     Review and merge the PR to continue.
                   </a>
                 ) : (
-                  <p className="text-xs text-zinc-400">Review and merge the PR to continue.</p>
+                  <p className="text-zinc-300">Review and merge the PR to continue.</p>
                 )
               )}
               {card2 === "complete" && (
-                <p className="text-xs text-emerald-400">PR merged successfully.</p>
+                <p className="text-zinc-500">PR merged successfully.</p>
+              )}
+              {card2 === "waiting" && (
+                <p className="text-zinc-400">Pending instrumentation...</p>
               )}
             </StepCard>
 
             <StepCard step={3} title="Vercel Deployment" state={card3}>
               {card3 === "active" && (
-                <p className="text-xs text-zinc-400">
+                <p className="text-zinc-300">
                   Deploying to Vercel... This usually takes 30-90 seconds.
                 </p>
               )}
               {card3 === "complete" && (
-                <p className="text-xs text-emerald-400 mb-2">
+                <p className="text-zinc-500 mb-2">
                   Deployment complete.</p>
               )}
               {card3 === "error" && (
-                <p className="text-xs text-red-400">Deployment failed. Check Vercel for details.</p>
+                <p className="text-red-400">Deployment failed. Check Vercel for details.</p>
+              )}
+              {card3 === "waiting" && (
+                <p className="text-zinc-400">Wait for integration to complete.</p>
               )}
             </StepCard>
           </div>
@@ -699,14 +719,14 @@ function BuildPage() {
           <div className="flex flex-col gap-3">
             {!incidentsLoaded ? (
               <div className="flex justify-center py-12">
-                <Spinner className="h-5 w-5 text-zinc-500" />
+                <Spinner className="h-5 w-5 text-zinc-400" />
               </div>
-            ) : activeIncidents.length === 0 ? (
+            ) : sortedIncidents.length === 0 ? (
               <div className="py-12 text-center">
-                <p className="text-sm text-zinc-500">No active incidents.</p>
+                <p className="text-sm text-zinc-400">No incidents detected.</p>
               </div>
             ) : (
-              activeIncidents.map((inc) => (
+              sortedIncidents.map((inc) => (
                 <IncidentRow
                   key={inc.id}
                   incident={inc}
@@ -714,33 +734,6 @@ function BuildPage() {
                   token={token!}
                   onDelete={handleDeleteIncident}
                   onResolve={handleResolveIncident}
-                  isFix={false}
-                />
-              ))
-            )}
-          </div>
-        )}
-
-        {tab === "fixes" && (
-          <div className="flex flex-col gap-3">
-            {!incidentsLoaded ? (
-              <div className="flex justify-center py-12">
-                <Spinner className="h-5 w-5 text-zinc-500" />
-              </div>
-            ) : resolvedIncidents.length === 0 ? (
-              <div className="py-12 text-center">
-                <p className="text-sm text-zinc-500">No resolved incidents yet.</p>
-              </div>
-            ) : (
-              resolvedIncidents.map((inc) => (
-                <IncidentRow
-                  key={inc.id}
-                  incident={inc}
-                  appId={appId}
-                  token={token!}
-                  onDelete={handleDeleteIncident}
-                  onResolve={handleResolveIncident}
-                  isFix={true}
                 />
               ))
             )}
