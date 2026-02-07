@@ -141,7 +141,7 @@ async def get_app_status(
 
     # Poll Vercel for latest deployment status
     if app.vercel_project_id:
-        vercel_token = settings.vercel_token
+        vercel_token = user.vercel_token or settings.vercel_token
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 res = await client.get(

@@ -41,8 +41,8 @@ async def create_deployment(
     # Sanitize project name (Vercel requirements: lowercase, no special chars except hyphens)
     project_name = re.sub(r'[^a-z0-9-]', '-', repo_name_only.lower())[:100]
 
-    # Get tokens
-    vercel_token = settings.vercel_token
+    # Get tokens – prefer user's own Vercel token, fall back to global
+    vercel_token = current_user.vercel_token or settings.vercel_token
     github_token = current_user.access_token
 
     if not github_token:

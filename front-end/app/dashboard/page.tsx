@@ -12,6 +12,7 @@ interface User {
   github_id: number;
   username: string;
   avatar_url: string | null;
+  has_vercel_token?: boolean;
 }
 
 interface AppEntry {
@@ -46,6 +47,10 @@ function Dashboard() {
   const [reposLoading, setReposLoading] = useState(false);
   const [connectingRepo, setConnectingRepo] = useState<string | null>(null);
   const [repoSearch, setRepoSearch] = useState("");
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [vercelTokenInput, setVercelTokenInput] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsMsg, setSettingsMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -119,6 +124,35 @@ function Dashboard() {
       }
     } finally {
       setReposLoading(false);
+    }
+  };
+
+  const saveVercelToken = async (tokenValue: string) => {
+    const session = localStorage.getItem("session");
+    if (!session) return;
+    setSavingSettings(true);
+    setSettingsMsg(null);
+    try {
+      const res = await fetch(`${API_BASE}/me/settings`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${session}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ vercel_token: tokenValue }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUser((prev) => prev ? { ...prev, has_vercel_token: data.has_vercel_token } : prev);
+        setSettingsMsg({ type: "ok", text: tokenValue ? "Saved successfully" : "Token removed" });
+        setVercelTokenInput("");
+      } else {
+        setSettingsMsg({ type: "err", text: "Failed to save" });
+      }
+    } catch {
+      setSettingsMsg({ type: "err", text: "Network error" });
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -214,13 +248,24 @@ function Dashboard() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {user.avatar_url && (
-              <img
-                src={user.avatar_url}
-                alt={user.username}
-                width={48}
-                height={48}
-                className="rounded-full ring-2 ring-white/20 shadow-xl"
-              />
+              <div
+                className="relative group/pfp cursor-pointer"
+                onClick={() => { setShowSettingsModal(true); setSettingsMsg(null); }}
+              >
+                <img
+                  src={user.avatar_url}
+                  alt={user.username}
+                  width={48}
+                  height={48}
+                  className="rounded-full ring-2 ring-white/20 shadow-xl"
+                />
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 group-hover/pfp:opacity-100 transition-opacity">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              </div>
             )}
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">
@@ -371,6 +416,77 @@ function Dashboard() {
           </button>
         </div>
       </div>
+
+      {/* Settings modal */}
+      {showSettingsModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowSettingsModal(false)}
+        >
+          <div
+            className="w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+              <h3 className="text-base font-bold text-white">Settings</h3>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="text-zinc-500 hover:text-white transition-colors p-1"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                  Vercel Auth Token
+                </label>
+                <p className="text-xs text-zinc-500 mb-3">
+                  Provide your own Vercel token to deploy under your account.
+                  {user.has_vercel_token && (
+                    <span className="ml-1 text-emerald-400">A token is currently saved.</span>
+                  )}
+                </p>
+                <input
+                  type="password"
+                  placeholder="Enter Vercel token..."
+                  value={vercelTokenInput}
+                  onChange={(e) => setVercelTokenInput(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:border-white/20"
+                />
+              </div>
+
+              {settingsMsg && (
+                <p className={`text-xs font-medium ${settingsMsg.type === "ok" ? "text-emerald-400" : "text-red-400"}`}>
+                  {settingsMsg.text}
+                </p>
+              )}
+
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  onClick={() => saveVercelToken(vercelTokenInput)}
+                  disabled={savingSettings || !vercelTokenInput.trim()}
+                  className="rounded-lg bg-white px-5 py-2 text-sm font-semibold text-black transition-all hover:opacity-80 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {savingSettings ? "Saving..." : "Save"}
+                </button>
+                {user.has_vercel_token && (
+                  <button
+                    onClick={() => saveVercelToken("")}
+                    disabled={savingSettings}
+                    className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-zinc-400 transition-all hover:border-white/20 hover:text-white disabled:opacity-40"
+                  >
+                    Remove Token
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Repo selection dialog */}
       {showRepoDialog && (
