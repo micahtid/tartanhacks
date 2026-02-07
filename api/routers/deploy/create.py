@@ -147,13 +147,6 @@ async def create_deployment(
                 )
 
             deployment_data = deployment_response.json()
-            deployment_url = f"https://{deployment_data['url']}"
-
-            aliases = deployment_data.get("alias", [])
-            if aliases and len(aliases) > 0:
-                production_url = f"https://{aliases[0]}"
-            else:
-                production_url = f"https://{project_name}.vercel.app"
 
             inspector_url = deployment_data.get("inspectorUrl")
 
@@ -162,16 +155,44 @@ async def create_deployment(
         except httpx.RequestError as e:
             raise HTTPException(status_code=500, detail=f"Vercel deployment request failed: {str(e)}")
 
-        # 4. Store in Database
-        app = App(
-            user_id=current_user.id,
-            repo_owner=repo_owner,
-            repo_name=repo_name_only,
-            vercel_project_id=project_name,
-            live_url=production_url,
-            status="deploying"
+        # 3b. Get the project's stable production domain via the domains endpoint
+        try:
+            domains_response = await client.get(
+                f"https://api.vercel.com/v9/projects/{project_name}/domains",
+                headers=vercel_headers,
+                params={"production": "true"}
+            )
+            if domains_response.status_code == 200:
+                domains_list = domains_response.json().get("domains", [])
+                if domains_list:
+                    production_url = f"https://{domains_list[0]['name']}"
+                else:
+                    production_url = f"https://{project_name}.vercel.app"
+            else:
+                production_url = f"https://{project_name}.vercel.app"
+        except (httpx.TimeoutException, httpx.RequestError):
+            production_url = f"https://{project_name}.vercel.app"
+
+        # 4. Store in Database (update existing app from /apps/connect if present)
+        app = (
+            db.query(App)
+            .filter(App.user_id == current_user.id, App.repo_owner == repo_owner, App.repo_name == repo_name_only)
+            .first()
         )
-        db.add(app)
+        if app:
+            app.vercel_project_id = project_name
+            app.live_url = None
+            app.status = "deploying"
+        else:
+            app = App(
+                user_id=current_user.id,
+                repo_owner=repo_owner,
+                repo_name=repo_name_only,
+                vercel_project_id=project_name,
+                live_url=None,
+                status="deploying"
+            )
+            db.add(app)
         db.commit()
         db.refresh(app)
 

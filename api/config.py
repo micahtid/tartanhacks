@@ -14,7 +14,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("github_app_client_secret", "github_client_secret"),
     )
     vercel_token: str = Field(
-        validation_alias=AliasChoices("vercel_token", "vercel_api_token"),
+        validation_alias=AliasChoices("vercel_token", "vercel_api_token", "vercel_auth_token"),
     )
     frontend_url: str
     database_url: str
