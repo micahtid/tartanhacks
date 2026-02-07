@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const API_BASE =
@@ -51,10 +51,23 @@ function Dashboard() {
   const [vercelTokenInput, setVercelTokenInput] = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [showConnectMenu, setShowConnectMenu] = useState(false);
+  const connectMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!showConnectMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (connectMenuRef.current && !connectMenuRef.current.contains(e.target as Node)) {
+        setShowConnectMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showConnectMenu]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -255,14 +268,55 @@ function Dashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            <a
-              href="https://github.com/apps/tartan-hacks/installations/new"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-lg bg-white px-5 py-2 text-xs font-bold uppercase tracking-wider text-black transition-all hover:opacity-80 active:scale-95"
-            >
-              Connect Apps
-            </a>
+            <div className="relative" ref={connectMenuRef}>
+              <button
+                onClick={() => setShowConnectMenu((v) => !v)}
+                className="flex items-center gap-2 rounded-lg bg-white px-5 py-2 text-xs font-bold uppercase tracking-wider text-black transition-all hover:opacity-80 active:scale-95"
+              >
+                Connect Apps
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`transition-transform ${showConnectMenu ? "rotate-180" : ""}`}
+                >
+                  <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              {showConnectMenu && (
+                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-[#0c0c0e] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50">
+                  <a
+                    href="https://github.com/apps/tartan-hacks/installations/new"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setShowConnectMenu(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+                    </svg>
+                    GitHub
+                  </a>
+                  <div className="border-t border-white/5" />
+                  <a
+                    href="https://github.com/marketplace/coderabbitai"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setShowConnectMenu(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-sm text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M9.5 2a6.5 6.5 0 00-5.28 10.28L3 21l4.5-2.5L12 21l4.5-2.5L21 21l-1.22-8.72A6.5 6.5 0 0014.5 2h-5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <circle cx="9.5" cy="8.5" r="1" fill="currentColor" />
+                      <circle cx="14.5" cy="8.5" r="1" fill="currentColor" />
+                    </svg>
+                    CodeRabbit
+                  </a>
+                </div>
+              )}
+            </div>
             <button
               onClick={handleLogout}
               className="rounded-lg border border-white/5 bg-white/[0.03] px-5 py-2 text-xs font-bold uppercase tracking-wider text-zinc-400 transition-all hover:bg-white/[0.08] hover:text-white hover:border-white/10"
