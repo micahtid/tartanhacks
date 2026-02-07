@@ -1,5 +1,3 @@
-import asyncio
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session as DBSession
@@ -8,7 +6,7 @@ from fastapi import Depends
 from api.database import get_db
 from api.models.app import App
 from api.models.incident import Incident
-from api.routers.incidents.analyze import _run_incident_analysis
+from api.services.incident_queue import enqueue_incident
 
 router = APIRouter()
 
@@ -54,20 +52,18 @@ async def receive_error_log(payload: ErrorPayload, db: DBSession = Depends(get_d
     db.commit()
     db.refresh(incident)
 
-    # Trigger analysis in background — need the app owner's GitHub token
+    # Enqueue for sequential processing — need the app owner's GitHub token
     user = app.user
     if user and user.access_token:
-        asyncio.create_task(
-            _run_incident_analysis(
-                incident_id=incident.id,
-                app_id=app.id,
-                github_token=user.access_token,
-                repo_owner=app.repo_owner,
-                repo_name=app.repo_name,
-                error_message=payload.error_message,
-                stack_trace=payload.stack_trace,
-                logs=payload.logs,
-            )
+        enqueue_incident(
+            app_id=app.id,
+            incident_id=incident.id,
+            github_token=user.access_token,
+            repo_owner=app.repo_owner,
+            repo_name=app.repo_name,
+            error_message=payload.error_message,
+            stack_trace=payload.stack_trace,
+            logs=payload.logs,
         )
 
     return {"status": "created", "incident_id": incident.id}
