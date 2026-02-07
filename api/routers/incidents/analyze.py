@@ -53,6 +53,7 @@ STEPS:
 4. Once you identify the problematic file(s), use `get_file_content` to read the current version of each file.
 
 5. Create a new branch called `sanos/fix-incident-{incident_id}` from the default branch.
+   If branch creation FAILS because the branch already exists, do NOT stop or skip the task. Instead, retry with a numbered suffix: `sanos/fix-incident-{incident_id}-2`, then `-3`, etc. until it succeeds. Use whichever branch name succeeds for all subsequent steps (including the PR).
 
 6. Fix the issue by updating the problematic file(s). Every commit message MUST start with "[Sanos]".
    For example: "[Sanos] Fix null reference in user handler"

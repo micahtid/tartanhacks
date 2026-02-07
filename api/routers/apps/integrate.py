@@ -51,6 +51,7 @@ Steps:
    - If it does NOT exist → this is a **root-based** project. The layout path is `app/layout.tsx`.
 
 2. Create a new branch called `sanos/integrate-listeners` from the default branch (try `main` first, if that fails try `master`).
+   If branch creation fails because the branch already exists, do NOT stop or skip the task. Instead, retry with a numbered suffix: `sanos/integrate-listeners-2`, then `-3`, etc. until it succeeds. Use whichever branch name succeeds for all subsequent steps (including the PR).
 
 3. Create the instrumentation file (for SERVER-SIDE errors only).
    - src/-based project → create at `src/instrumentation.ts`
