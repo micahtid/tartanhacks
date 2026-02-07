@@ -121,4 +121,18 @@ def make_github_tools(github_token: str) -> list[Callable]:
             "number": data["number"],
         })
 
-    return [get_file_content, create_branch, update_file, create_file, list_commits, create_pull_request]
+    def get_commit_diff(owner: str, repo: str, sha: str) -> str:
+        """Get the diff/patch for a specific commit, showing which files changed and what changed."""
+        r = httpx.get(
+            f"{GITHUB_API}/repos/{owner}/{repo}/commits/{sha}",
+            headers={**headers, "Accept": "application/vnd.github.v3.diff"},
+            timeout=15.0,
+        )
+        r.raise_for_status()
+        diff = r.text
+        # Truncate very large diffs
+        if len(diff) > 15000:
+            diff = diff[:15000] + "\n... [truncated]"
+        return diff
+
+    return [get_file_content, create_branch, update_file, create_file, list_commits, create_pull_request, get_commit_diff]

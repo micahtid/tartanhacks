@@ -6,7 +6,7 @@ from api.config import settings
 from api.database import get_db
 from api.models.user import User
 from api.models.app import App
-from api.models.incident import Incident
+from api.models.incident import Incident, Analysis
 from api.utils.auth import get_current_user
 from api.services.github_service import get_repo_details
 
@@ -143,8 +143,15 @@ async def get_app_incidents(
         .all()
     )
 
-    return [
-        {
+    result = []
+    for inc in incidents:
+        analyses = (
+            db.query(Analysis)
+            .filter(Analysis.incident_id == inc.id)
+            .order_by(Analysis.created_at.desc())
+            .all()
+        )
+        result.append({
             "id": inc.id,
             "type": inc.type,
             "source": inc.source,
@@ -154,9 +161,24 @@ async def get_app_incidents(
             "logs": inc.logs,
             "created_at": inc.created_at.isoformat() if inc.created_at else None,
             "resolved_at": inc.resolved_at.isoformat() if inc.resolved_at else None,
-        }
-        for inc in incidents
-    ]
+            "analyses": [
+                {
+                    "id": a.id,
+                    "llm_model": a.llm_model,
+                    "root_cause": a.root_cause,
+                    "suggested_fix": a.suggested_fix,
+                    "files_analyzed": a.files_analyzed,
+                    "commits_analyzed": a.commits_analyzed,
+                    "pr_url": a.pr_url,
+                    "pr_number": a.pr_number,
+                    "branch_name": a.branch_name,
+                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                    "tokens_used": a.tokens_used,
+                }
+                for a in analyses
+            ],
+        })
+    return result
 
 
 @router.get("/apps/{app_id}/status")

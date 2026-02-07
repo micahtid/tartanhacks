@@ -23,6 +23,20 @@ interface AppDetail {
   created_at: string | null;
 }
 
+interface AnalysisData {
+  id: number;
+  llm_model: string | null;
+  root_cause: string | null;
+  suggested_fix: Record<string, unknown> | null;
+  files_analyzed: string[] | null;
+  commits_analyzed: string[] | null;
+  pr_url: string | null;
+  pr_number: number | null;
+  branch_name: string | null;
+  created_at: string | null;
+  tokens_used: number | null;
+}
+
 interface IncidentData {
   id: number;
   type: string;
@@ -33,10 +47,11 @@ interface IncidentData {
   logs: Record<string, unknown> | null;
   created_at: string | null;
   resolved_at: string | null;
+  analyses: AnalysisData[];
 }
 
 type CardState = "waiting" | "active" | "complete" | "error";
-type TabMode = "setup" | "active" | "resolved";
+type TabMode = "setup" | "incidents" | "fixes";
 
 function Spinner({ className = "h-5 w-5" }: { className?: string }) {
   return (
@@ -131,9 +146,86 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-function IncidentRow({ incident }: { incident: IncidentData }) {
+function formatDuration(startStr: string, endStr?: string | null): string {
+  const start = new Date(startStr).getTime();
+  const end = endStr ? new Date(endStr).getTime() : Date.now();
+  const seconds = Math.floor((end - start) / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ${minutes % 60}m`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ${hours % 24}h`;
+}
+
+function formatLabel(raw: string): string {
+  return raw
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function LiveDuration({ startStr }: { startStr: string }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <span>{formatDuration(startStr)}</span>;
+}
+
+function IncidentRow({
+  incident,
+  appId,
+  token,
+  onDelete,
+  onResolve,
+  isFix,
+}: {
+  incident: IncidentData;
+  appId: string;
+  token: string;
+  onDelete: (id: number) => void;
+  onResolve: (id: number) => void;
+  isFix: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const isResolved = incident.status === "resolved";
+  const latestAnalysis = incident.analyses?.[0] ?? null;
+
+  const statusLabel: Record<string, { text: string; color: string }> = {
+    open: { text: "Open", color: "text-red-400" },
+    analyzing: { text: "Analyzing", color: "text-yellow-400" },
+    pr_created: { text: "PR Ready", color: "text-blue-400" },
+    resolved: { text: "Resolved", color: "text-emerald-400" },
+  };
+
+  const st = statusLabel[incident.status] || { text: incident.status, color: "text-zinc-400" };
+
+  async function handleDelete() {
+    try {
+      const res = await fetch(`${API_BASE}/apps/${appId}/incidents/${incident.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) onDelete(incident.id);
+    } catch {}
+  }
+
+  async function handleResolve() {
+    setResolving(true);
+    try {
+      const res = await fetch(`${API_BASE}/apps/${appId}/incidents/${incident.id}/resolve`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) onResolve(incident.id);
+    } catch {} finally {
+      setResolving(false);
+    }
+  }
 
   return (
     <div className="rounded-xl border border-white/5 bg-white/[0.02] transition-all duration-200">
@@ -143,11 +235,22 @@ function IncidentRow({ incident }: { incident: IncidentData }) {
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className={`h-2 w-2 shrink-0 rounded-full ${isResolved ? "bg-emerald-500" : "bg-red-500"}`} />
+            <div className={`h-2 w-2 shrink-0 rounded-full ${isResolved ? "bg-emerald-500" : incident.status === "analyzing" ? "bg-yellow-500 animate-pulse" : incident.status === "pr_created" ? "bg-blue-500" : "bg-red-500"}`} />
             <p className="text-sm text-white truncate">{incident.error_message}</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className="text-xs text-zinc-500">{incident.source}</span>
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${st.color}`}>{st.text}</span>
+            <span className="text-xs text-zinc-500">{formatLabel(incident.source)}</span>
+            {incident.created_at && !isFix && (
+              <span className="text-xs text-zinc-500 font-mono tabular-nums">
+                <LiveDuration startStr={incident.created_at} />
+              </span>
+            )}
+            {isFix && incident.created_at && incident.resolved_at && (
+              <span className="text-xs text-zinc-500 font-mono tabular-nums">
+                {formatDuration(incident.created_at, incident.resolved_at)}
+              </span>
+            )}
             {incident.created_at && (
               <span className="text-xs text-zinc-600">{timeAgo(incident.created_at)}</span>
             )}
@@ -164,18 +267,117 @@ function IncidentRow({ incident }: { incident: IncidentData }) {
           </div>
         </div>
       </button>
+
       {expanded && (
-        <div className="border-t border-white/5 px-5 py-4 space-y-3">
+        <div className="border-t border-white/5 px-5 py-4 space-y-4">
+          {/* Incident meta */}
           <div className="flex gap-4 text-xs text-zinc-500">
-            <span>Type: {incident.type}</span>
-            <span>Status: {incident.status}</span>
+            <span>Type: {formatLabel(incident.type)}</span>
+            <span>Status: {formatLabel(incident.status)}</span>
             {incident.resolved_at && <span>Resolved: {timeAgo(incident.resolved_at)}</span>}
           </div>
-          {incident.stack_trace && (
-            <pre className="text-xs text-zinc-400 bg-white/[0.03] rounded-lg p-3 overflow-x-auto max-h-48 whitespace-pre-wrap">
-              {incident.stack_trace}
-            </pre>
+
+          {/* Logs section */}
+          {incident.logs && (
+            <div>
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">Logs</h4>
+              <pre className="text-xs text-zinc-400 bg-white/[0.03] rounded-lg p-3 overflow-x-auto max-h-40 whitespace-pre-wrap">
+                {JSON.stringify(incident.logs, null, 2)}
+              </pre>
+            </div>
           )}
+
+          {/* Stack trace */}
+          {incident.stack_trace && (
+            <div>
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-2">Stack Trace</h4>
+              <pre className="text-xs text-zinc-400 bg-white/[0.03] rounded-lg p-3 overflow-x-auto max-h-48 whitespace-pre-wrap">
+                {incident.stack_trace}
+              </pre>
+            </div>
+          )}
+
+          {/* Analysis section */}
+          {latestAnalysis && (
+            <div className="space-y-3">
+              {latestAnalysis.root_cause && (
+                <div className="bg-white/[0.03] rounded-lg p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 mb-1">Root Cause</p>
+                  <p className="text-xs text-zinc-300">{latestAnalysis.root_cause}</p>
+                </div>
+              )}
+
+              {/* PR link + confirm button */}
+              {latestAnalysis.pr_url && incident.status === "pr_created" && (
+                <div className="flex items-center gap-3 pt-1">
+                  <a
+                    href={latestAnalysis.pr_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-400 underline hover:text-blue-300 transition-colors"
+                  >
+                    View PR #{latestAnalysis.pr_number}
+                  </a>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleResolve(); }}
+                    disabled={resolving}
+                    className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-50"
+                  >
+                    {resolving ? "Merging..." : "Accept PR & Resolve"}
+                  </button>
+                </div>
+              )}
+
+              {latestAnalysis.pr_url && incident.status === "resolved" && (
+                <div className="flex items-center gap-3 pt-1">
+                  <a
+                    href={latestAnalysis.pr_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-emerald-400 underline hover:text-emerald-300 transition-colors"
+                  >
+                    View Merged PR #{latestAnalysis.pr_number}
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Analyzing spinner */}
+          {incident.status === "analyzing" && !latestAnalysis && (
+            <div className="flex items-center gap-3 py-2">
+              <Spinner className="h-4 w-4 text-yellow-400" />
+              <span className="text-xs text-yellow-400">Analyzing incident and preparing fix...</span>
+            </div>
+          )}
+
+          {/* Delete button */}
+          <div className="flex justify-end pt-2 border-t border-white/5">
+            {!confirmingDelete ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); setConfirmingDelete(true); }}
+                className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 hover:text-red-400 transition-colors"
+              >
+                Delete
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-500">Are you sure?</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+                  className="text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-300 transition-colors"
+                >
+                  Yes, delete
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmingDelete(false); }}
+                  className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -216,10 +418,10 @@ function BuildPage() {
       .catch(() => setError("Failed to load app details"));
   }, [appId, router, token]);
 
-  // Fetch incidents when switching to active/resolved tab, then poll every 5s
+  // Fetch incidents when switching to incidents/fixes tab, then poll every 5s
   useEffect(() => {
     if (!token) return;
-    if (tab !== "active" && tab !== "resolved") return;
+    if (tab !== "incidents" && tab !== "fixes") return;
 
     const fetchIncidents = () => {
       fetch(`${API_BASE}/apps/${appId}/incidents`, {
@@ -319,7 +521,6 @@ function BuildPage() {
 
   // Derive card states from pipeline_step
   const getCardStates = (pipeline: string | null): [CardState, CardState, CardState] => {
-    // Already deployed apps (legacy or pipeline complete)
     if (!pipeline || pipeline === "ready") {
       return ["complete", "complete", "complete"];
     }
@@ -339,6 +540,20 @@ function BuildPage() {
         return ["waiting", "waiting", "waiting"];
     }
   };
+
+  function handleDeleteIncident(id: number) {
+    setIncidents((prev) => prev.filter((i) => i.id !== id));
+  }
+
+  function handleResolveIncident(id: number) {
+    setIncidents((prev) =>
+      prev.map((i) =>
+        i.id === id
+          ? { ...i, status: "resolved", resolved_at: new Date().toISOString() }
+          : i
+      )
+    );
+  }
 
   if (error) {
     return (
@@ -364,10 +579,10 @@ function BuildPage() {
   const activeIncidents = incidents.filter((i) => i.status !== "resolved");
   const resolvedIncidents = incidents.filter((i) => i.status === "resolved");
 
-  const tabs: { key: TabMode; label: string }[] = [
+  const tabs: { key: TabMode; label: string; count?: number }[] = [
     { key: "setup", label: "Set Up" },
-    { key: "active", label: "Active Incidents" },
-    { key: "resolved", label: "Resolved Incidents" },
+    { key: "incidents", label: "Incidents", count: activeIncidents.length },
+    { key: "fixes", label: "Fixes", count: resolvedIncidents.length },
   ];
 
   return (
@@ -403,13 +618,20 @@ function BuildPage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`px-6 py-3 text-[10px] font-bold uppercase tracking-widest transition-all relative ${
+              className={`px-6 py-3 text-[10px] font-bold uppercase tracking-widest transition-all relative flex items-center gap-2 ${
                 tab === t.key
                   ? "text-white"
                   : "text-zinc-500 hover:text-zinc-300"
               }`}
             >
               {t.label}
+              {t.count !== undefined && t.count > 0 && (
+                <span className={`text-[10px] font-bold ${
+                  t.key === "incidents" ? "text-red-400" : "text-emerald-400"
+                }`}>
+                  {t.count}
+                </span>
+              )}
               {tab === t.key && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white" />
               )}
@@ -420,7 +642,6 @@ function BuildPage() {
         {/* Tab content */}
         {tab === "setup" && (
           <div className="flex flex-col gap-4">
-            {/* Card 1: Integrating Error Listeners */}
             <StepCard step={1} title="Integrating Error Listeners" state={card1}>
               {card1 === "active" && (
                 <p className="text-xs text-zinc-400">
@@ -437,7 +658,6 @@ function BuildPage() {
               )}
             </StepCard>
 
-            {/* Card 2: Accept Integration PR */}
             <StepCard step={2} title="Accept Integration PR" state={card2}>
               {card2 === "active" && (
                 app.pr_url ? (
@@ -458,7 +678,6 @@ function BuildPage() {
               )}
             </StepCard>
 
-            {/* Card 3: Vercel Deployment */}
             <StepCard step={3} title="Vercel Deployment" state={card3}>
               {card3 === "active" && (
                 <p className="text-xs text-zinc-400">
@@ -466,22 +685,8 @@ function BuildPage() {
                 </p>
               )}
               {card3 === "complete" && (
-                <div>
-                  <p className="text-xs text-emerald-400 mb-2">Deployment complete.</p>
-                  {app.live_url && (
-                    <a
-                      href={app.live_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-sm text-emerald-400 hover:text-emerald-300 underline transition-colors"
-                    >
-                      {app.live_url.replace("https://", "")}
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </a>
-                  )}
-                </div>
+                <p className="text-xs text-emerald-400 mb-2">
+                  Deployment complete.</p>
               )}
               {card3 === "error" && (
                 <p className="text-xs text-red-400">Deployment failed. Check Vercel for details.</p>
@@ -490,7 +695,7 @@ function BuildPage() {
           </div>
         )}
 
-        {tab === "active" && (
+        {tab === "incidents" && (
           <div className="flex flex-col gap-3">
             {!incidentsLoaded ? (
               <div className="flex justify-center py-12">
@@ -502,13 +707,21 @@ function BuildPage() {
               </div>
             ) : (
               activeIncidents.map((inc) => (
-                <IncidentRow key={inc.id} incident={inc} />
+                <IncidentRow
+                  key={inc.id}
+                  incident={inc}
+                  appId={appId}
+                  token={token!}
+                  onDelete={handleDeleteIncident}
+                  onResolve={handleResolveIncident}
+                  isFix={false}
+                />
               ))
             )}
           </div>
         )}
 
-        {tab === "resolved" && (
+        {tab === "fixes" && (
           <div className="flex flex-col gap-3">
             {!incidentsLoaded ? (
               <div className="flex justify-center py-12">
@@ -516,11 +729,19 @@ function BuildPage() {
               </div>
             ) : resolvedIncidents.length === 0 ? (
               <div className="py-12 text-center">
-                <p className="text-sm text-zinc-500">No resolved incidents.</p>
+                <p className="text-sm text-zinc-500">No resolved incidents yet.</p>
               </div>
             ) : (
               resolvedIncidents.map((inc) => (
-                <IncidentRow key={inc.id} incident={inc} />
+                <IncidentRow
+                  key={inc.id}
+                  incident={inc}
+                  appId={appId}
+                  token={token!}
+                  onDelete={handleDeleteIncident}
+                  onResolve={handleResolveIncident}
+                  isFix={true}
+                />
               ))
             )}
           </div>

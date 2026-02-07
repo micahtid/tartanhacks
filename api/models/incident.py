@@ -21,3 +21,24 @@ class Incident(Base):
     resolved_at = Column(DateTime, nullable=True)
 
     app = relationship("App", back_populates="incidents")
+    analyses = relationship("Analysis", back_populates="incident", cascade="all, delete-orphan")
+
+
+class Analysis(Base):
+    __tablename__ = "analyses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    incident_id = Column(Integer, ForeignKey("incidents.id"), nullable=False)
+    llm_model = Column(String, nullable=True)  # gemini, claude
+    prompt = Column(Text, nullable=True)
+    root_cause = Column(Text, nullable=True)
+    suggested_fix = Column(JSON, nullable=True)  # JSON with code changes
+    files_analyzed = Column(JSON, nullable=True)  # JSON list of file paths
+    commits_analyzed = Column(JSON, nullable=True)  # JSON list of commit SHAs
+    pr_url = Column(String, nullable=True)
+    pr_number = Column(Integer, nullable=True)
+    branch_name = Column(String, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    tokens_used = Column(Integer, nullable=True)
+
+    incident = relationship("Incident", back_populates="analyses")

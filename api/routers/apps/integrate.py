@@ -62,7 +62,7 @@ export async function onRequestError(
     renderType: "dynamic" | "dynamic-resume";
   }}
 ) {{
-  await fetch("https://sanos-th26.vercel.app/api/webhooks/logs", {{
+  await fetch("http://localhost:8000/api/webhooks/logs", {{
     method: "POST",
     headers: {{ "Content-Type": "application/json" }},
     body: JSON.stringify({{
@@ -106,7 +106,7 @@ export default function SanosReporter() {{
         stack_trace: stack || null,
       }});
       navigator.sendBeacon(
-        "https://sanos-th26.vercel.app/api/webhooks/logs",
+        "http://localhost:8000/api/webhooks/logs",
         new Blob([payload], {{ type: "application/json" }})
       );
     }}
@@ -161,7 +161,7 @@ export default function GlobalError({{
       stack_trace: error.stack || null,
     }});
     navigator.sendBeacon(
-      "https://sanos-th26.vercel.app/api/webhooks/logs",
+      "http://localhost:8000/api/webhooks/logs",
       new Blob([payload], {{ type: "application/json" }})
     );
   }}
@@ -184,8 +184,10 @@ export default function GlobalError({{
    - Update the file with the modified content, preserving ALL existing code.
 
 7. Create a pull request from `sanos/integrate-listeners` to the default branch with:
-   - Title: "[SANOS] Add error monitoring instrumentation"
+   - Title: "[Sanos] Add error monitoring instrumentation"
    - Body: "This PR adds automatic error monitoring for Sanos.\\n\\n- `instrumentation.ts` — captures server-side errors via the Next.js `onRequestError` hook\\n- `sanos-reporter.tsx` — catches all client-side errors (event handlers, async, unhandled rejections) via window error listeners\\n- `global-error.tsx` — fallback UI when the root layout crashes\\n\\nMerge this PR to enable error monitoring on your deployed app."
+
+IMPORTANT: Every commit message you create MUST start with "[Sanos]". For example: "[Sanos] Add instrumentation.ts for server-side error capture"
 
 IMPORTANT: After creating the PR, output the PR URL on its own line in this exact format (no other text on the line):
 SANOS_PR=https://github.com/{repo_owner}/{repo_name}/pull/NUMBER
