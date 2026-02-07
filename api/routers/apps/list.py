@@ -6,6 +6,7 @@ from api.config import settings
 from api.database import get_db
 from api.models.user import User
 from api.models.app import App
+from api.models.incident import Incident
 from api.utils.auth import get_current_user
 from api.services.github_service import get_repo_details
 
@@ -117,8 +118,45 @@ async def get_app(
         "live_url": app.live_url,
         "vercel_project_id": app.vercel_project_id,
         "instrumented": app.instrumented,
+        "pipeline_step": app.pipeline_step,
+        "pr_url": app.pr_url,
+        "pr_number": app.pr_number,
+        "webhook_key": app.webhook_key,
         "created_at": app.created_at.isoformat() if app.created_at else None,
     }
+
+
+@router.get("/apps/{app_id}/incidents")
+async def get_app_incidents(
+    app_id: int,
+    user: User = Depends(get_current_user),
+    db: DBSession = Depends(get_db),
+):
+    app = db.query(App).filter(App.id == app_id, App.user_id == user.id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="App not found")
+
+    incidents = (
+        db.query(Incident)
+        .filter(Incident.app_id == app_id)
+        .order_by(Incident.created_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": inc.id,
+            "type": inc.type,
+            "source": inc.source,
+            "status": inc.status,
+            "error_message": inc.error_message,
+            "stack_trace": inc.stack_trace,
+            "logs": inc.logs,
+            "created_at": inc.created_at.isoformat() if inc.created_at else None,
+            "resolved_at": inc.resolved_at.isoformat() if inc.resolved_at else None,
+        }
+        for inc in incidents
+    ]
 
 
 @router.get("/apps/{app_id}/status")
@@ -131,16 +169,48 @@ async def get_app_status(
     if not app:
         raise HTTPException(status_code=404, detail="App not found")
 
+    def _response():
+        return {
+            "status": app.status,
+            "live_url": app.live_url,
+            "pipeline_step": app.pipeline_step,
+            "pr_url": app.pr_url,
+            "pr_number": app.pr_number,
+            "webhook_key": app.webhook_key,
+            "instrumented": app.instrumented,
+        }
+
+    # Check if PR has been merged (GitHub API)
+    if app.pipeline_step == "pr_created" and app.pr_number:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                gh_res = await client.get(
+                    f"https://api.github.com/repos/{app.repo_owner}/{app.repo_name}/pulls/{app.pr_number}",
+                    headers={
+                        "Authorization": f"Bearer {user.access_token}",
+                        "Accept": "application/vnd.github.v3+json",
+                    },
+                )
+                if gh_res.status_code == 200:
+                    pr_data = gh_res.json()
+                    if pr_data.get("merged"):
+                        app.pipeline_step = "pr_merged"
+                        app.instrumented = True
+                        db.commit()
+                        db.refresh(app)
+        except Exception:
+            pass
+
     # If already terminal, return cached status
-    if app.status in ("ready", "error", "canceled"):
-        return {"status": app.status, "live_url": app.live_url}
+    if app.status in ("ready", "error", "canceled") and app.pipeline_step in ("ready", "error", None):
+        return _response()
 
     # If no vercel project yet (just connected, deploy hasn't started), return as-is
     if not app.vercel_project_id:
-        return {"status": app.status, "live_url": app.live_url}
+        return _response()
 
-    # Poll Vercel for latest deployment status
-    if app.vercel_project_id:
+    # Only poll Vercel when pipeline_step is "deploying"
+    if app.vercel_project_id and app.pipeline_step == "deploying":
         vercel_token = user.vercel_token or settings.vercel_token
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -168,6 +238,7 @@ async def get_app_status(
                         if new_status != app.status:
                             app.status = new_status
                         if new_status == "ready":
+                            app.pipeline_step = "ready"
                             # Fetch project domains for the stable production URL
                             live_url = None
                             try:
@@ -195,4 +266,4 @@ async def get_app_status(
         except Exception:
             pass
 
-    return {"status": app.status, "live_url": app.live_url}
+    return _response()

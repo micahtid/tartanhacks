@@ -80,7 +80,7 @@ export default function PlaygroundPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center font-sans overflow-hidden bg-black px-6">
+    <div className="relative flex min-h-screen items-center justify-center font-sans overflow-hidden bg-black px-6 py-8">
       <main className="relative z-10 w-full">
         <div className="flex flex-col items-center gap-8 py-20 px-10 bg-black/40 backdrop-blur-md rounded-[32px] border border-white/10 shadow-xl w-full max-w-2xl mx-auto">
           <div className="flex flex-col items-center gap-3 text-center">

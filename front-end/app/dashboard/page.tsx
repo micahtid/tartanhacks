@@ -160,9 +160,7 @@ function Dashboard() {
     const token = localStorage.getItem("session");
     if (!token) return;
     setConnectingRepo(fullName);
-    const isFirstProject = apps.length === 0;
     try {
-      // 1. Connect the repo (creates App in DB)
       const connectRes = await fetch(`${API_BASE}/apps/connect`, {
         method: "POST",
         headers: {
@@ -173,41 +171,7 @@ function Dashboard() {
       });
       if (!connectRes.ok) return;
       const connectData = await connectRes.json();
-
-      // 2. Auto-deploy to Vercel
-      const deployRes = await fetch(`${API_BASE}/deploy/create`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ repo_name: fullName }),
-      });
-
-      const appId = deployRes.ok
-        ? ((await deployRes.json()).app_id ?? connectData.id)
-        : connectData.id;
-
-      // Only auto-navigate for the user's very first project
-      if (isFirstProject) {
-        router.push(`/dashboard/${appId}`);
-        return;
-      }
-
-      // Otherwise, add the new app to the list and stay on the dashboard
-      const newApp: AppEntry = {
-        id: appId,
-        repo_owner: connectData.repo_owner ?? fullName.split("/")[0],
-        repo_name: connectData.repo_name ?? fullName.split("/")[1],
-        full_name: connectData.full_name ?? fullName,
-        status: connectData.status ?? "pending",
-        private: connectData.private ?? false,
-        live_url: connectData.live_url ?? null,
-        instrumented: connectData.instrumented ?? false,
-        created_at: connectData.created_at ?? null,
-      };
-      setApps((prev) => [...prev, newApp]);
-      setShowRepoDialog(false);
+      router.push(`/dashboard/${connectData.id}`);
     } finally {
       setConnectingRepo(null);
     }
@@ -216,12 +180,12 @@ function Dashboard() {
   const statusBadge = (status: string) => {
     const s = status?.toLowerCase() ?? "pending";
     const styles: Record<string, string> = {
-      ready: "bg-emerald-900/40 text-emerald-300",
-      active: "bg-emerald-900/40 text-emerald-300",
-      deploying: "bg-yellow-900/40 text-yellow-300",
-      building: "bg-yellow-900/40 text-yellow-300",
-      error: "bg-red-900/40 text-red-300",
-      pending: "bg-zinc-800 text-zinc-400",
+      ready: "bg-emerald-950/40 text-emerald-400 border-emerald-500/10",
+      active: "bg-emerald-950/40 text-emerald-400 border-emerald-500/10",
+      deploying: "bg-yellow-950/40 text-yellow-400 border-yellow-500/10",
+      building: "bg-yellow-950/40 text-yellow-400 border-yellow-500/10",
+      error: "bg-red-950/40 text-red-400 border-red-500/10",
+      pending: "bg-zinc-800 text-zinc-400 border-zinc-700/50",
     };
     const label: Record<string, string> = {
       ready: "Ready",
@@ -233,7 +197,7 @@ function Dashboard() {
     };
     return (
       <span
-        className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${styles[s] ?? styles.pending}`}
+        className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest border ${styles[s] ?? styles.pending}`}
       >
         {label[s] ?? s}
       </span>
@@ -242,7 +206,7 @@ function Dashboard() {
 
   if (!mounted || loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
+      <div className="flex min-h-screen items-center justify-center bg-[#09090b] animate-in fade-in duration-700">
         <svg
           className="animate-spin h-5 w-5 text-zinc-500"
           xmlns="http://www.w3.org/2000/svg"
@@ -257,8 +221,8 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-black font-sans">
-      <div className="mx-auto w-full max-w-[1200px] px-8 py-10 sm:px-12 lg:px-16">
+    <div className="min-h-screen bg-[#09090b] font-sans animate-in fade-in duration-500">
+      <div className="mx-auto w-full max-w-[1100px] px-8 py-12 sm:px-12 lg:px-16">
         {/* Header row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -272,7 +236,7 @@ function Dashboard() {
                   alt={user.username}
                   width={48}
                   height={48}
-                  className="rounded-full ring-2 ring-white/20 shadow-xl"
+                  className="rounded-full ring-2 ring-white/10 shadow-2xl"
                 />
                 <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 group-hover/pfp:opacity-100 transition-opacity">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -286,7 +250,7 @@ function Dashboard() {
               <h1 className="text-2xl font-bold tracking-tight text-white">
                 {user.username}
               </h1>
-              <p className="text-xs font-medium text-zinc-500 uppercase tracking-widest">Sanos Dashboard</p>
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Sanos Dashboard</p>
             </div>
           </div>
 
@@ -295,13 +259,13 @@ function Dashboard() {
               href="https://github.com/apps/tartan-hacks/installations/new"
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg bg-white px-5 py-2 text-sm font-semibold text-black transition-all hover:opacity-80 active:scale-95"
+              className="rounded-lg bg-white px-5 py-2 text-xs font-bold uppercase tracking-wider text-black transition-all hover:opacity-80 active:scale-95"
             >
               Connect Apps
             </a>
             <button
               onClick={handleLogout}
-              className="rounded-lg border border-white/10 bg-white/5 px-5 py-2 text-sm font-semibold text-zinc-300 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
+              className="rounded-lg border border-white/5 bg-white/[0.03] px-5 py-2 text-xs font-bold uppercase tracking-wider text-zinc-400 transition-all hover:bg-white/[0.08] hover:text-white hover:border-white/10"
             >
               Sign Out
             </button>
@@ -309,7 +273,7 @@ function Dashboard() {
         </div>
 
         {/* Divider */}
-        <div className="mt-10 border-t border-white/10" />
+        <div className="mt-10 border-t border-white/5" />
 
         {/* Projects section */}
         <div className="mt-10">
@@ -318,7 +282,7 @@ function Dashboard() {
           </div>
 
           {appsLoading ? (
-            <div className="flex items-center gap-3 py-12 justify-center">
+            <div className="flex items-center gap-3 py-20 justify-center animate-in fade-in duration-500">
               <svg
                 className="animate-spin h-4 w-4 text-zinc-500"
                 xmlns="http://www.w3.org/2000/svg"
@@ -328,27 +292,22 @@ function Dashboard() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <span className="text-sm text-zinc-500">Loading projects...</span>
+              <span className="text-sm font-medium text-zinc-500">Syncing with GitHub...</span>
             </div>
           ) : apps.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="rounded-full bg-white/5 p-4 mb-4">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" stroke="#52525b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-zinc-500">No active projects</p>
-              <p className="text-xs text-zinc-600 mt-1 max-w-sm">
+            <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-white/5 bg-white/[0.01] mb-6 animate-in fade-in duration-500">
+              <p className="text-sm font-bold text-zinc-400 uppercase tracking-wider">No active projects</p>
+              <p className="text-xs text-zinc-500 mt-2 max-w-[280px] leading-relaxed">
                 Click &ldquo;Add New Project&rdquo; below to connect a GitHub repository and deploy it.
               </p>
             </div>
           ) : (
             <div>
               {/* Column headers */}
-              <div className="grid grid-cols-[1.5fr_2fr_100px_40px] items-center pb-3 px-6 border-b border-white/10 mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-400">Repository</span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-400">Source URL</span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-400">Status</span>
+              <div className="grid grid-cols-[1.5fr_2fr_100px_40px] items-center pb-3 px-6 border-b border-white/5 mb-2">
+                <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">Repository</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">Source URL</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">Status</span>
                 <span className="w-4" />
               </div>
 
@@ -358,7 +317,7 @@ function Dashboard() {
                   <div key={app.id}>
                     <div
                       onClick={() => router.push(`/dashboard/${app.id}`)}
-                      className="group grid grid-cols-[1.5fr_2fr_100px_40px] items-center rounded-lg px-6 py-4 transition-all hover:bg-white/[0.04] border-b border-white/[0.03] last:border-0 cursor-pointer"
+                      className="group grid grid-cols-[1.5fr_2fr_100px_40px] items-center rounded-lg px-6 py-4 transition-all hover:bg-white/[0.03] border-b border-white/[0.02] last:border-0 cursor-pointer"
                     >
                       {/* Name + visibility */}
                       <div className="flex items-center gap-3 min-w-0">
@@ -366,10 +325,10 @@ function Dashboard() {
                           {app.repo_name}
                         </span>
                         <span
-                          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                          className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${
                             app.private
-                              ? "bg-zinc-800 text-zinc-300"
-                              : "bg-blue-900/40 text-blue-300"
+                              ? "bg-zinc-800 text-zinc-400"
+                              : "bg-blue-900/30 text-blue-400"
                           }`}
                         >
                           {app.private ? "Private" : "Public"}
@@ -384,12 +343,12 @@ function Dashboard() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-[13px] text-zinc-400 hover:text-white transition-colors truncate block"
+                            className="text-xs font-medium text-zinc-400 hover:text-white transition-colors truncate block"
                           >
                             {app.live_url.replace("https://", "")}
                           </a>
                         ) : (
-                          <span className="text-sm text-zinc-600">&mdash;</span>
+                          <span className="text-xs text-zinc-600">&mdash;</span>
                         )}
                       </div>
 
@@ -404,7 +363,7 @@ function Dashboard() {
                             handleDeleteApp(app.id);
                           }}
                           disabled={deletingApp === app.id}
-                          className="text-zinc-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 p-1"
+                          className="text-zinc-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 p-1"
                           title="Remove project"
                         >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -422,10 +381,10 @@ function Dashboard() {
           {/* Add Project — bottom */}
           <button
             onClick={openRepoDialog}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] py-4 text-sm font-bold text-zinc-400 transition-all hover:bg-white/[0.05] hover:text-white hover:border-white/20"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] py-4 text-xs font-bold uppercase tracking-widest text-zinc-500 transition-all hover:bg-white/[0.05] hover:text-white hover:border-white/10"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             Add New Project
           </button>
@@ -435,15 +394,15 @@ function Dashboard() {
       {/* Settings modal */}
       {showSettingsModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
           onClick={() => setShowSettingsModal(false)}
         >
           <div
-            className="w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl overflow-hidden"
+            className="w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-[#0c0c0e] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-              <h3 className="text-base font-bold text-white">Settings</h3>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest">Settings</h3>
               <button
                 onClick={() => setShowSettingsModal(false)}
                 className="text-zinc-500 hover:text-white transition-colors p-1"
@@ -454,15 +413,15 @@ function Dashboard() {
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-4">
+            <div className="px-6 py-6 space-y-6">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">
+                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-3">
                   Vercel Auth Token
                 </label>
-                <p className="text-xs text-zinc-500 mb-3">
+                <p className="text-xs text-zinc-500 mb-4 leading-relaxed">
                   Provide your own Vercel token to deploy under your account.
                   {user.has_vercel_token && (
-                    <span className="ml-1 text-emerald-400">A token is currently saved.</span>
+                    <span className="block mt-1 font-bold text-emerald-500 uppercase tracking-tight text-[10px]">Active token detected</span>
                   )}
                 </p>
                 <input
@@ -470,21 +429,21 @@ function Dashboard() {
                   placeholder="Enter Vercel token..."
                   value={vercelTokenInput}
                   onChange={(e) => setVercelTokenInput(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:border-white/20"
+                  className="w-full bg-white/[0.03] border border-white/5 rounded-lg px-3 py-2.5 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/10 transition-colors"
                 />
               </div>
 
               {settingsMsg && (
-                <p className={`text-xs font-medium ${settingsMsg.type === "ok" ? "text-emerald-400" : "text-red-400"}`}>
+                <p className={`text-[10px] font-bold uppercase tracking-wider ${settingsMsg.type === "ok" ? "text-emerald-500" : "text-red-500"}`}>
                   {settingsMsg.text}
                 </p>
               )}
 
-              <div className="flex items-center gap-3 pt-1">
+              <div className="flex items-center gap-3 pt-2">
                 <button
                   onClick={() => saveVercelToken(vercelTokenInput)}
                   disabled={savingSettings || !vercelTokenInput.trim()}
-                  className="rounded-lg bg-white px-5 py-2 text-sm font-semibold text-black transition-all hover:opacity-80 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="rounded-lg bg-white px-6 py-2 text-xs font-bold uppercase tracking-widest text-black transition-all hover:opacity-90 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {savingSettings ? "Saving..." : "Save"}
                 </button>
@@ -492,9 +451,9 @@ function Dashboard() {
                   <button
                     onClick={() => saveVercelToken("")}
                     disabled={savingSettings}
-                    className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-zinc-400 transition-all hover:border-white/20 hover:text-white disabled:opacity-40"
+                    className="rounded-lg border border-white/5 bg-white/[0.03] px-5 py-2 text-xs font-bold uppercase tracking-widest text-zinc-400 transition-all hover:bg-white/[0.08] hover:text-white"
                   >
-                    Remove Token
+                    Remove
                   </button>
                 )}
               </div>
@@ -506,15 +465,15 @@ function Dashboard() {
       {/* Repo selection dialog */}
       {showRepoDialog && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
           onClick={() => setShowRepoDialog(false)}
         >
           <div
-            className="w-full max-w-lg mx-4 rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl overflow-hidden"
+            className="w-full max-w-2xl mx-4 rounded-2xl border border-white/10 bg-[#0c0c0e] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-              <h3 className="text-base font-bold text-white">Select a Repository</h3>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest">Select a Repository</h3>
               <button
                 onClick={() => setShowRepoDialog(false)}
                 className="text-zinc-500 hover:text-white transition-colors p-1"
@@ -526,13 +485,13 @@ function Dashboard() {
             </div>
 
             {/* Search */}
-            <div className="px-6 py-3 border-b border-white/5">
+            <div className="px-6 py-4 border-b border-white/[0.02]">
               <input
                 type="text"
                 placeholder="Search repositories..."
                 value={repoSearch}
                 onChange={(e) => setRepoSearch(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:border-white/20"
+                className="w-full bg-white/[0.03] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/10 transition-colors"
               />
             </div>
 
@@ -571,10 +530,10 @@ function Dashboard() {
                           {repo.full_name}
                         </span>
                         <span
-                          className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                          className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${
                             repo.private
-                              ? "bg-zinc-800 text-zinc-300"
-                              : "bg-blue-900/40 text-blue-300"
+                              ? "bg-zinc-800 text-zinc-400"
+                              : "bg-blue-900/30 text-blue-400"
                           }`}
                         >
                           {repo.private ? "Private" : "Public"}

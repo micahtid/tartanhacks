@@ -183,6 +183,7 @@ async def create_deployment(
             app.vercel_project_id = project_name
             app.live_url = None
             app.status = "deploying"
+            app.pipeline_step = "deploying"
         else:
             app = App(
                 user_id=current_user.id,
