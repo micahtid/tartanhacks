@@ -3,24 +3,76 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui;
   --font-mono: var(--font-geist-mono);
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #000;
+  --foreground: #fff;
+  
+  /* Liquid Glass Variables from Reference */
+  --shadow-offset: 0;
+  --shadow-blur: 20px;
+  --shadow-spread: -5px;
+  --shadow-color: rgba(255, 255, 255, 0.7);
+  --tint-color: 255, 255, 255;
+  --tint-opacity: 0.4;
+  --frost-blur: 2px;
+  --outer-shadow-blur: 24px;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+.liquid-glass {
+  position: relative;
+  isolation: isolate;
+  box-shadow: 0px 6px var(--outer-shadow-blur) rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+}
+
+/* Tint and Shadow Layer - Top (z-index: 0) */
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  box-shadow: inset var(--shadow-offset) var(--shadow-offset) var(--shadow-blur) var(--shadow-spread) var(--shadow-color);
+  background-color: rgba(var(--tint-color), var(--tint-opacity));
+  pointer-events: none;
+}
+
+/* Frost and Distortion Layer - Bottom (z-index: -1) */
+.liquid-glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  backdrop-filter: blur(var(--frost-blur));
+  filter: url(#glass-distortion);
+  -webkit-backdrop-filter: blur(var(--frost-blur));
+  -webkit-filter: url("#glass-distortion");
+  pointer-events: none;
+}
+
+.liquid-glass:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.liquid-glass:active {
+  transform: translateY(1px);
+}
+
+/* Ensure content is above the glass layers */
+.liquid-glass > * {
+  position: relative;
+  z-index: 10;
 }

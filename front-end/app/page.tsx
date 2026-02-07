@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import FaultyTerminal from "@/components/FaultyTerminal";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
@@ -55,7 +56,6 @@ export default function Home() {
       })
       .then((data) => {
         setUser(data);
-        // Fetch permissions separately — don't fail login if this errors
         fetch(`${API_BASE}/me/permissions`, { headers })
           .then((res) => res.ok ? res.json() : null)
           .then((data) => { if (data) setInstallData(data); });
@@ -79,75 +79,62 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
-        <p className="text-zinc-500">Loading...</p>
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <p className="text-zinc-500 font-medium">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex w-full max-w-3xl flex-col gap-10 py-32 px-16 bg-white dark:bg-black sm:items-start">
+    <div className="relative flex min-h-screen items-center justify-center font-sans overflow-hidden bg-black px-6">
+      {/* SVG Filter for Liquid Glass - Must be present in the DOM */}
+      <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" className="absolute invisible">
+        <defs>
+          <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.008 0.008" numOctaves="2" seed="92" result="noise" />
+            <feGaussianBlur in="noise" stdDeviation="2" result="blurred" />
+            <feDisplacementMap in="SourceGraphic" in2="blurred" scale="77" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
+      
+      <main className="relative z-10 w-full">
         {user ? (
-          <>
-            <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
+          <div className="flex flex-col items-center gap-10 py-20 px-10 bg-black/40 backdrop-blur-md rounded-[32px] border border-white/10 shadow-xl w-full max-w-3xl mx-auto">
+            <div className="flex flex-col items-center gap-6 text-center">
               <div className="flex items-center gap-4">
                 {user.avatar_url && (
                   <img
                     src={user.avatar_url}
                     alt={user.username}
-                    width={48}
-                    height={48}
-                    className="rounded-full"
+                    width={56}
+                    height={56}
+                    className="rounded-full ring-2 ring-white/20"
                   />
                 )}
-                <div>
-                  <h1 className="text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
+                <div className="text-left">
+                  <h1 className="text-3xl font-semibold tracking-tight text-white">
                     Welcome, {user.username}
                   </h1>
-                  <p className="text-zinc-500 dark:text-zinc-400">
+                  <p className="text-zinc-400 font-medium">
                     Signed in via GitHub
                   </p>
                 </div>
               </div>
               <button
                 onClick={handleLogout}
-                className="flex h-12 items-center justify-center rounded-full border border-solid border-black/[.08] px-6 text-base font-medium transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:text-zinc-50 dark:hover:bg-[#1a1a1a]"
+                className="flex h-12 items-center justify-center rounded-full border border-white/10 px-6 text-base font-semibold text-white transition-all hover:bg-white/5 active:scale-95"
               >
                 Sign out
               </button>
             </div>
 
             {installData && installData.repositories.length > 0 ? (
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-6 w-full text-left">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-semibold text-black dark:text-zinc-50">
+                  <h2 className="text-xl font-semibold text-white">
                     Repositories
-                    {installData.repository_selection === "all" && (
-                      <span className="ml-2 text-sm font-normal text-zinc-500">
-                        (all repositories)
-                      </span>
-                    )}
                   </h2>
-                  {installData.repository_selection === "selected" &&
-                    installData.installation_url && (
-                      <a
-                        href={installData.installation_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex h-9 items-center gap-1.5 rounded-full border border-black/[.08] px-4 text-sm font-medium transition-colors hover:bg-zinc-50 dark:border-white/[.145] dark:text-zinc-50 dark:hover:bg-zinc-900"
-                      >
-                        <svg
-                          viewBox="0 0 16 16"
-                          width="14"
-                          height="14"
-                          fill="currentColor"
-                        >
-                          <path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z" />
-                        </svg>
-                        Add repository
-                      </a>
-                    )}
                 </div>
 
                 <div className="flex flex-col gap-3">
@@ -156,106 +143,49 @@ export default function Home() {
                     return (
                       <div
                         key={repo.name}
-                        className="rounded-lg border border-black/[.08] dark:border-white/[.145]"
+                        className="rounded-xl border border-white/5 bg-white/5 overflow-hidden"
                       >
                         <button
                           onClick={() =>
                             setExpandedRepo(isExpanded ? null : repo.name)
                           }
-                          className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                          className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors hover:bg-white/10"
                         >
                           <div className="flex items-center gap-3">
-                            <svg
-                              viewBox="0 0 16 16"
-                              width="16"
-                              height="16"
-                              className="text-zinc-400"
-                              fill="currentColor"
-                            >
-                              <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.25.25 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z" />
-                            </svg>
-                            <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                            <span className="text-sm font-semibold text-zinc-100">
                               {repo.name}
                             </span>
                             <span
-                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                                 repo.private
-                                  ? "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300"
-                                  : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                  ? "bg-zinc-800 text-zinc-300"
+                                  : "bg-emerald-900/30 text-emerald-400"
                               }`}
                             >
                               {repo.private ? "private" : "public"}
                             </span>
                           </div>
-                          <svg
-                            viewBox="0 0 16 16"
-                            width="16"
-                            height="16"
-                            fill="currentColor"
-                            className={`text-zinc-400 transition-transform ${
-                              isExpanded ? "rotate-180" : ""
-                            }`}
-                          >
-                            <path d="M12.78 5.22a.749.749 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.06 0L3.22 6.28a.749.749 0 1 1 1.06-1.06L8 8.939l3.72-3.719a.749.749 0 0 1 1.06 0Z" />
-                          </svg>
                         </button>
 
                         {isExpanded && (
-                          <div className="border-t border-black/[.08] px-4 py-3 dark:border-white/[.145]">
-                            <div className="mb-3 flex items-center justify-between">
-                              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                                Permissions
-                              </h3>
-                              <a
-                                href={repo.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-zinc-500 underline hover:text-zinc-800 dark:hover:text-zinc-300"
-                              >
-                                View on GitHub
-                              </a>
-                            </div>
-                            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                          <div className="border-t border-white/5 px-5 py-4 bg-white/5">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                               {Object.entries(repo.permissions).map(
                                 ([scope, level]) => (
                                   <div
                                     key={scope}
-                                    className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2 dark:bg-zinc-900"
+                                    className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2"
                                   >
-                                    <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                                    <span className="text-xs font-medium text-zinc-400">
                                       {scope.replace(/_/g, " ")}
                                     </span>
-                                    <span
-                                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                        level === "write"
-                                          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                                          : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
-                                      }`}
-                                    >
+                                    <span className="text-xs font-bold text-white uppercase">
                                       {level}
                                     </span>
                                   </div>
                                 )
                               )}
                             </div>
-
-                            {repo.events.length > 0 && (
-                              <>
-                                <h3 className="mt-3 mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                                  Subscribed Events
-                                </h3>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {repo.events.map((event) => (
-                                    <span
-                                      key={event}
-                                      className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                                    >
-                                      {event}
-                                    </span>
-                                  ))}
-                                </div>
-                              </>
-                            )}
                           </div>
                         )}
                       </div>
@@ -264,47 +194,73 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-4 rounded-lg border border-black/[.08] p-6 dark:border-white/[.145]">
-                <h2 className="text-xl font-semibold text-black dark:text-zinc-50">
+              <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/5 bg-white/5 p-8 w-full">
+                <h2 className="text-xl font-semibold text-white">
                   App Not Installed
                 </h2>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="text-sm text-zinc-400 font-medium max-w-sm">
                   Install the GitHub App on your account to grant repository
-                  permissions and see them here.
+                  permissions and start automating your workflow.
                 </p>
                 <a
                   href="https://github.com/apps/tartan-hacks/installations/new"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-10 w-fit items-center gap-2 rounded-full bg-foreground px-5 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+                  className="flex h-11 items-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-black transition-all hover:opacity-80 active:scale-95"
                 >
                   Install App on GitHub
                 </a>
               </div>
             )}
-          </>
+          </div>
         ) : (
-          <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-            <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-              Patchwork
-            </h1>
-            <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-              Sign in with GitHub to get started.
-            </p>
-            <button
-              onClick={handleLogin}
-              className="flex h-12 items-center gap-3 rounded-full bg-foreground px-6 text-background text-base font-medium transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
-            >
-              <svg
-                viewBox="0 0 16 16"
-                width="20"
-                height="20"
-                fill="currentColor"
+          /* Centered Hero Card with FaultyTerminal Inside */
+          <div className="relative w-[calc(100vw-100px)] h-[calc(100vh-100px)] mx-auto rounded-[32px] border border-white/10 overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            {/* FaultyTerminal as the background of the card */}
+            <div className="absolute inset-0 z-0">
+              <FaultyTerminal
+                scale={1.5}
+                digitSize={1.2}
+                scanlineIntensity={0}
+                glitchAmount={1}
+                flickerAmount={1}
+                noiseAmp={1}
+                chromaticAberration={0}
+                dither={0}
+                curvature={0.05}
+                tint="#311c02"
+                mouseReact={false}
+                mouseStrength={0.5}
+                brightness={1.0}
+              />
+            </div>
+
+            {/* Content Layer */}
+            <div className="relative z-10 flex flex-col items-start justify-center h-full px-16 md:px-28 text-left">
+              <h1 className="text-[32px] md:text-[64px] font-semibold leading-tight tracking-[-0.02em] text-white whitespace-nowrap mb-7">
+                The Autonomous DevOps
+              </h1>
+              <p className="max-w-2xl text-[16px] md:text-[18px] leading-relaxed text-zinc-300 font-medium">
+                From build failures to runtime crashes, Sanos detects every error across your stack, diagnoses the root cause, and ships the fix as a pull request.
+              </p>
+
+              <button
+                onClick={handleLogin}
+                className="flex h-12 items-center gap-3 rounded-full px-6 text-white font-semibold text-base bg-white/25 hover:bg-white/35 backdrop-blur-[2.5px] transition-colors mt-10"
               >
-                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-              </svg>
-              Sign in with GitHub
-            </button>
+                <div className="flex items-center gap-3">
+                  <svg
+                    viewBox="0 0 16 16"
+                    width="20"
+                    height="20"
+                    fill="currentColor"
+                  >
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                  </svg>
+                  <span>Sign in with GitHub</span>
+                </div>
+              </button>
+            </div>
           </div>
         )}
       </main>

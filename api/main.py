@@ -16,7 +16,7 @@ from api.routers.user.permissions import router as permissions_router
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Patchwork API")
+app = FastAPI(title="Sanos API")
 
 app.add_middleware(
     CORSMiddleware,

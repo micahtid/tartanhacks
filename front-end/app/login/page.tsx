@@ -11,7 +11,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
       <div className="flex flex-col items-center gap-8">
         <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
-          Patchwork
+          Sanos
         </h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           Sign in to get started.
