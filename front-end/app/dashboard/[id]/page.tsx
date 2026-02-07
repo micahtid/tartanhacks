@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
+import LogWindow from "@/components/LogWindow";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
@@ -115,7 +116,7 @@ function StepCard({
     complete: "bg-zinc-800",
     error: "bg-red-500/20",
   }[state];
-  
+
   const iconColor = {
     waiting: "text-white/60",
     active: "text-yellow-400",
@@ -226,7 +227,7 @@ function IncidentRow({
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) onDelete(incident.id);
-    } catch {}
+    } catch { }
   }
 
   async function handleResolve() {
@@ -237,7 +238,7 @@ function IncidentRow({
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) onResolve(incident.id);
-    } catch {} finally {
+    } catch { } finally {
       setResolving(false);
     }
   }
@@ -398,6 +399,10 @@ function BuildPage() {
   const integrateTriggered = useRef(false);
   const deployTriggered = useRef(false);
 
+  // Log state for Dedalus and Vercel
+  const [dedalusLogs, setDedalusLogs] = useState<string[]>([]);
+  const [vercelLogs, setVercelLogs] = useState<string[]>([]);
+
   const token = typeof window !== "undefined" ? localStorage.getItem("session") : null;
 
   // Fetch app details on mount
@@ -432,7 +437,7 @@ function BuildPage() {
           setIncidents(data);
           setIncidentsLoaded(true);
         })
-        .catch(() => {});
+        .catch(() => { });
     };
 
     fetchIncidents();
@@ -448,7 +453,7 @@ function BuildPage() {
       fetch(`${API_BASE}/apps/${app.id}/integrate`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [app, token]);
 
@@ -494,15 +499,15 @@ function BuildPage() {
           setApp((prev) =>
             prev
               ? {
-                  ...prev,
-                  status: data.status,
-                  live_url: data.live_url,
-                  pipeline_step: data.pipeline_step,
-                  pr_url: data.pr_url,
-                  pr_number: data.pr_number,
-                  webhook_key: data.webhook_key,
-                  instrumented: data.instrumented,
-                }
+                ...prev,
+                status: data.status,
+                live_url: data.live_url,
+                pipeline_step: data.pipeline_step,
+                pr_url: data.pr_url,
+                pr_number: data.pr_number,
+                webhook_key: data.webhook_key,
+                instrumented: data.instrumented,
+              }
               : prev
           );
           if (data.pipeline_step === "ready" || data.pipeline_step === "error") {
@@ -517,6 +522,59 @@ function BuildPage() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
+  }, [appId, app?.pipeline_step, token]);
+
+  // Poll Dedalus logs while step 1 is active
+  useEffect(() => {
+    if (!token || !app) return;
+    const pipeline = app.pipeline_step;
+    // Poll during pending/integrating, or show final logs for other states
+    const shouldPoll = pipeline === "pending" || pipeline === "integrating";
+
+    const fetchDedalusLogs = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/apps/${appId}/logs/dedalus?limit=100`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setDedalusLogs(data.logs || []);
+        }
+      } catch { }
+    };
+
+    fetchDedalusLogs();
+    if (shouldPoll) {
+      const id = setInterval(fetchDedalusLogs, 2000);
+      return () => clearInterval(id);
+    }
+  }, [appId, app?.pipeline_step, token]);
+
+  // Poll Vercel logs while step 3 is active
+  useEffect(() => {
+    if (!token || !app) return;
+    const pipeline = app.pipeline_step;
+    const shouldPoll = pipeline === "deploying" || pipeline === "pr_merged";
+
+    const fetchVercelLogs = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/apps/${appId}/logs/vercel?limit=100`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setVercelLogs(data.logs || []);
+        }
+      } catch { }
+    };
+
+    if (shouldPoll || pipeline === "ready") {
+      fetchVercelLogs();
+    }
+    if (shouldPoll) {
+      const id = setInterval(fetchVercelLogs, 3000);
+      return () => clearInterval(id);
+    }
   }, [appId, app?.pipeline_step, token]);
 
   // Derive card states from pipeline_step
@@ -631,11 +689,10 @@ function BuildPage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`px-6 py-3 text-[10px] font-medium tracking-widest transition-all relative flex items-center gap-2 ${
-                tab === t.key
-                  ? "text-white"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
+              className={`px-6 py-3 text-[10px] font-medium tracking-widest transition-all relative flex items-center gap-2 ${tab === t.key
+                ? "text-white"
+                : "text-zinc-400 hover:text-zinc-200"
+                }`}
             >
               {t.label}
               {t.count !== undefined && t.count > 0 && (
@@ -669,6 +726,14 @@ function BuildPage() {
               )}
               {card1 === "waiting" && (
                 <p className="text-zinc-400">Wait for instrumentation to begin.</p>
+              )}
+              {(card1 === "active" || dedalusLogs.length > 0) && (
+                <LogWindow
+                  logs={dedalusLogs}
+                  defaultLines={4}
+                  title="Agent Logs"
+                  isLoading={card1 === "active"}
+                />
               )}
             </StepCard>
 
@@ -710,6 +775,14 @@ function BuildPage() {
               )}
               {card3 === "waiting" && (
                 <p className="text-zinc-400">Wait for integration to complete.</p>
+              )}
+              {(card3 === "active" || vercelLogs.length > 0) && (
+                <LogWindow
+                  logs={vercelLogs}
+                  defaultLines={4}
+                  title="Build Logs"
+                  isLoading={card3 === "active"}
+                />
               )}
             </StepCard>
           </div>

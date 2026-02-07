@@ -12,6 +12,7 @@ from api.database import Base, engine
 from api.models import Analysis, App, Incident, Session, User  # noqa: F401
 from api.routers.apps.integrate import router as integrate_router
 from api.routers.apps.list import router as apps_router
+from api.routers.apps.logs import router as app_logs_router
 from api.routers.auth.callback import router as github_callback_router
 from api.routers.auth.github import router as github_login_router
 from api.routers.deploy.create import router as deploy_router
@@ -56,6 +57,7 @@ app.include_router(permissions_router, prefix="/api")
 app.include_router(playground_router, prefix="/api")
 app.include_router(apps_router, prefix="/api")
 app.include_router(integrate_router, prefix="/api")
+app.include_router(app_logs_router, prefix="/api")
 app.include_router(deploy_router, prefix="/api")
 app.include_router(logs_webhook_router, prefix="/api")
 app.include_router(incidents_router, prefix="/api")

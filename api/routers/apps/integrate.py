@@ -200,8 +200,15 @@ Replace NUMBER with the ACTUAL PR number you just created (do NOT use a placehol
 """
 
         try:
-            result = await run_dedalus_agent(github_token, prompt)
+            result = await run_dedalus_agent(github_token, prompt, app_id=app_id)
             agent_output = result.get("agent_output", "")
+            
+            # Log the agent output for debugging
+            print(f"[Integration] Agent output (last 1000 chars): {agent_output[-1000:]}")
+            
+            # Also add the final output to log store so user can see it
+            from api.services.log_store import log_store
+            log_store.append(app_id, "dedalus", f"[Agent Output] {agent_output[:500]}...")
 
             # Parse PR URL — match the exact GitHub PR URL pattern
             # A PR is ALWAYS required. The user must review and merge it.
@@ -210,12 +217,26 @@ Replace NUMBER with the ACTUAL PR number you just created (do NOT use a placehol
                 agent_output,
             )
 
+            # Check if agent detected that integration is already complete
+            already_integrated = (
+                "already been integrated" in agent_output.lower() or
+                "already integrated" in agent_output.lower() or
+                "already has" in agent_output.lower() and "instrumentation" in agent_output.lower()
+            )
+
             if pr_match:
                 app.pr_url = pr_match.group(0)
                 app.pr_number = int(pr_match.group(1))
                 app.pipeline_step = "pr_created"
+                log_store.append(app_id, "dedalus", f"[Integration] PR created: {app.pr_url}")
+            elif already_integrated:
+                # Repo is already integrated - skip to deployment step
+                log_store.append(app_id, "dedalus", "[Integration] Repository is already integrated!")
+                app.pipeline_step = "pr_merged"  # Skip to deployment
+                app.instrumented = True
             else:
                 print(f"[Integration Warning] Could not parse PR URL from agent output: {agent_output[-500:]}")
+                log_store.append(app_id, "dedalus", "[Integration Warning] Could not find PR URL in agent output")
                 app.pipeline_step = "error"
 
             db.commit()

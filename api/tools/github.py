@@ -29,7 +29,13 @@ def make_github_tools(github_token: str) -> list[Callable]:
             headers=headers,
             params={"ref": ref},
         )
-        r.raise_for_status()
+        if r.status_code != 200:
+            try:
+                error_data = r.json()
+                error_msg = error_data.get("message", r.text)
+            except Exception:
+                error_msg = r.text
+            raise Exception(f"GitHub API error {r.status_code}: {error_msg}")
         data = r.json()
         content = base64.b64decode(data["content"]).decode()
         return json.dumps({"content": content, "sha": data["sha"], "path": data["path"]})
@@ -41,7 +47,12 @@ def make_github_tools(github_token: str) -> list[Callable]:
             f"{GITHUB_API}/repos/{owner}/{repo}/git/ref/heads/{source_branch}",
             headers=headers,
         )
-        r.raise_for_status()
+        if r.status_code != 200:
+            try:
+                error_msg = r.json().get("message", r.text)
+            except Exception:
+                error_msg = r.text
+            raise Exception(f"GitHub API error {r.status_code}: {error_msg}")
         sha = r.json()["object"]["sha"]
 
         # Create the new branch
@@ -50,7 +61,12 @@ def make_github_tools(github_token: str) -> list[Callable]:
             headers=headers,
             json={"ref": f"refs/heads/{new_branch}", "sha": sha},
         )
-        r.raise_for_status()
+        if r.status_code not in [200, 201]:
+            try:
+                error_msg = r.json().get("message", r.text)
+            except Exception:
+                error_msg = r.text
+            raise Exception(f"GitHub API error {r.status_code}: {error_msg}")
         return json.dumps({"message": f"Branch '{new_branch}' created from '{source_branch}'", "sha": sha})
 
     def update_file(owner: str, repo: str, path: str, content: str, message: str, branch: str, sha: str) -> str:
@@ -66,7 +82,12 @@ def make_github_tools(github_token: str) -> list[Callable]:
                 "branch": branch,
             },
         )
-        r.raise_for_status()
+        if r.status_code not in [200, 201]:
+            try:
+                error_msg = r.json().get("message", r.text)
+            except Exception:
+                error_msg = r.text
+            raise Exception(f"GitHub API error {r.status_code}: {error_msg}")
         data = r.json()
         return json.dumps({
             "message": f"File '{path}' updated on branch '{branch}'",
@@ -85,7 +106,12 @@ def make_github_tools(github_token: str) -> list[Callable]:
                 "branch": branch,
             },
         )
-        r.raise_for_status()
+        if r.status_code not in [200, 201]:
+            try:
+                error_msg = r.json().get("message", r.text)
+            except Exception:
+                error_msg = r.text
+            raise Exception(f"GitHub API error {r.status_code}: {error_msg}")
         data = r.json()
         return json.dumps({
             "message": f"File '{path}' created on branch '{branch}'",
@@ -99,7 +125,12 @@ def make_github_tools(github_token: str) -> list[Callable]:
             headers=headers,
             params={"sha": branch, "per_page": per_page},
         )
-        r.raise_for_status()
+        if r.status_code != 200:
+            try:
+                error_msg = r.json().get("message", r.text)
+            except Exception:
+                error_msg = r.text
+            raise Exception(f"GitHub API error {r.status_code}: {error_msg}")
         commits = [
             {"sha": c["sha"][:7], "message": c["commit"]["message"], "author": c["commit"]["author"]["name"]}
             for c in r.json()
@@ -113,7 +144,12 @@ def make_github_tools(github_token: str) -> list[Callable]:
             headers=headers,
             json={"title": title, "head": head, "base": base, "body": body},
         )
-        r.raise_for_status()
+        if r.status_code not in [200, 201]:
+            try:
+                error_msg = r.json().get("message", r.text)
+            except Exception:
+                error_msg = r.text
+            raise Exception(f"GitHub API error {r.status_code}: {error_msg}")
         data = r.json()
         return json.dumps({
             "message": f"Pull request #{data['number']} created",
