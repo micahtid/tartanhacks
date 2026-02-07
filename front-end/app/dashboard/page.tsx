@@ -34,6 +34,9 @@ export default function DashboardPage() {
   const [expandedRepo, setExpandedRepo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
+  const [deployingRepos, setDeployingRepos] = useState<Set<string>>(new Set());
+  const [deployErrors, setDeployErrors] = useState<Map<string, string>>(new Map());
+  const [deployUrls, setDeployUrls] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     const token = localStorage.getItem("session");
@@ -69,6 +72,49 @@ export default function DashboardPage() {
   const handleLogout = () => {
     localStorage.removeItem("session");
     router.replace("/");
+  };
+
+  const deployRepo = async (repoName: string) => {
+    const token = localStorage.getItem("session");
+    if (!token) return;
+
+    setDeployErrors((prev) => {
+      const next = new Map(prev);
+      next.delete(repoName);
+      return next;
+    });
+
+    setDeployingRepos((prev) => new Set(prev).add(repoName));
+
+    try {
+      const res = await fetch(`${API_BASE}/deploy/create`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ repo_name: repoName }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || "Deployment failed");
+      }
+
+      if (data.deployment_url) {
+        setDeployUrls((prev) => new Map(prev).set(repoName, data.deployment_url));
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      setDeployErrors((prev) => new Map(prev).set(repoName, errorMessage));
+    } finally {
+      setDeployingRepos((prev) => {
+        const next = new Set(prev);
+        next.delete(repoName);
+        return next;
+      });
+    }
   };
 
   if (loading || !user) {
@@ -190,6 +236,51 @@ export default function DashboardPage() {
                                 </div>
                               )
                             )}
+                          </div>
+
+                          {/* Vercel Deploy Section */}
+                          <div className="mt-4 pt-3 border-t border-white/5">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex-1">
+                                {deployUrls.get(repo.name) && (
+                                  <a
+                                    href={deployUrls.get(repo.name)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-400 underline hover:text-blue-300 truncate block"
+                                  >
+                                    {deployUrls.get(repo.name)}
+                                  </a>
+                                )}
+                                {deployErrors.get(repo.name) && (
+                                  <p className="text-xs text-red-400 mt-1">
+                                    {deployErrors.get(repo.name)}
+                                  </p>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => deployRepo(repo.name)}
+                                disabled={deployingRepos.has(repo.name)}
+                                className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold text-black transition-all hover:opacity-80 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {deployingRepos.has(repo.name) ? (
+                                  <>
+                                    <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Deploying…
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg viewBox="0 0 76 76" width="12" height="12" fill="currentColor">
+                                      <path d="M38 0l7.8 23.9h25.2l-20.4 14.8 7.8 24-20.4-14.9-20.4 14.9 7.8-24L5 23.9h25.2L38 0z" />
+                                    </svg>
+                                    Deploy to Vercel
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}

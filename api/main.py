@@ -8,12 +8,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
 from api.database import engine, Base
-from api.models import User, Session  # noqa: F401
+from api.models import User, Session, App  # noqa: F401
 from api.routers.auth.github import router as github_login_router
 from api.routers.auth.callback import router as github_callback_router
 from api.routers.user.me import router as me_router
 from api.routers.user.permissions import router as permissions_router
 from api.routers.playground import router as playground_router
+from api.routers.apps.list import router as apps_router
+from api.routers.deploy.create import router as deploy_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -32,6 +34,8 @@ app.include_router(github_callback_router, prefix="/api")
 app.include_router(me_router, prefix="/api")
 app.include_router(permissions_router, prefix="/api")
 app.include_router(playground_router, prefix="/api")
+app.include_router(apps_router, prefix="/api")
+app.include_router(deploy_router, prefix="/api")
 
 
 @app.get("/api/healthcheck")

@@ -20,6 +20,7 @@ class User(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
+    apps = relationship("App", back_populates="user", cascade="all, delete-orphan")
 
 
 class Session(Base):
