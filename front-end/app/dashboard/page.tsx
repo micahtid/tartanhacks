@@ -200,7 +200,7 @@ function Dashboard() {
       deploying: "bg-yellow-950/40 text-yellow-400 border-yellow-500/20",
       building: "bg-yellow-950/40 text-yellow-400 border-yellow-500/20",
       error: "bg-red-950/40 text-red-400 border-red-500/20",
-      pending: "bg-zinc-800 text-zinc-400 border-zinc-700/50",
+      pending: "bg-zinc-800 text-zinc-300 border-zinc-700/50",
     };
     const label: Record<string, string> = {
       ready: "Ready",
@@ -212,7 +212,7 @@ function Dashboard() {
     };
     return (
       <span
-        className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold tracking-widest border ${styles[s] ?? styles.pending}`}
+        className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-bold tracking-wider border ${styles[s] ?? styles.pending}`}
       >
         {label[s] ?? s}
       </span>
@@ -262,10 +262,10 @@ function Dashboard() {
               </div>
             )}
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white">
+              <h1 className="text-3xl font-bold tracking-tight text-white">
                 {user.username}
               </h1>
-              <p className="text-[10px] text-zinc-400 tracking-[0.02em] font-accent">Sanos Dashboard</p>
+              <p className="text-xs text-zinc-400 tracking-[0.02em] font-accent">Sanos Dashboard</p>
             </div>
           </div>
 
@@ -273,12 +273,12 @@ function Dashboard() {
             <div className="relative" ref={connectMenuRef}>
               <button
                 onClick={() => setShowConnectMenu((v) => !v)}
-                className="flex items-center gap-2 rounded-full bg-white px-5 py-2 text-xs text-black transition-all hover:opacity-80 active:scale-95 font-accent"
+                className="flex items-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-bold text-black transition-all hover:opacity-80 active:scale-95 font-accent"
               >
                 Connect Apps
                 <svg
-                  width="10"
-                  height="10"
+                  width="12"
+                  height="12"
                   viewBox="0 0 24 24"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
@@ -288,15 +288,15 @@ function Dashboard() {
                 </svg>
               </button>
               {showConnectMenu && (
-                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-white/20 bg-[#0c0c0e] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50">
+                <div className="absolute right-0 mt-2 w-64 rounded-xl border border-white/20 bg-[#0c0c0e] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50">
                   <a
                     href="https://github.com/apps/tartan-hacks/installations/new"
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => setShowConnectMenu(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-zinc-300 transition-colors hover:bg-white/[0.08] hover:text-white"
+                    className="flex items-center gap-3 px-5 py-4 text-base text-zinc-300 transition-colors hover:bg-white/[0.08] hover:text-white"
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
                     </svg>
                     GitHub
@@ -307,9 +307,9 @@ function Dashboard() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => setShowConnectMenu(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm text-zinc-300 transition-colors hover:bg-white/[0.08] hover:text-white"
+                    className="flex items-center gap-3 px-5 py-4 text-base text-zinc-300 transition-colors hover:bg-white/[0.08] hover:text-white"
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M9.5 2a6.5 6.5 0 00-5.28 10.28L3 21l4.5-2.5L12 21l4.5-2.5L21 21l-1.22-8.72A6.5 6.5 0 0014.5 2h-5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                       <circle cx="9.5" cy="8.5" r="1" fill="currentColor" />
                       <circle cx="14.5" cy="8.5" r="1" fill="currentColor" />
@@ -321,7 +321,7 @@ function Dashboard() {
             </div>
             <button
               onClick={handleLogout}
-              className="rounded-full border border-white/20 bg-white/20 px-5 py-2 text-xs text-white transition-all hover:bg-white/30 active:scale-95 font-accent"
+              className="rounded-full border border-white/20 bg-white/20 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/30 active:scale-95 font-accent"
             >
               Sign Out
             </button>
@@ -334,7 +334,7 @@ function Dashboard() {
         {/* Projects section */}
         <div className="mt-10">
           <div className="flex items-center mb-8">
-            <h2 className="text-xl font-bold text-white tracking-tight">Projects</h2>
+            <h2 className="text-2xl font-bold text-white tracking-tight">Projects</h2>
           </div>
 
           {appsLoading ? (
@@ -348,16 +348,16 @@ function Dashboard() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              <span className="text-sm font-medium text-zinc-400">Syncing with GitHub...</span>
+              <span className="text-base font-medium text-zinc-400">Syncing with GitHub...</span>
             </div>
           ) : (
             <div>
               {/* Column headers */}
-              <div className="grid grid-cols-[1.5fr_2fr_100px_120px_40px] items-center pb-3 px-6 border-b border-white/20 mb-2">
-                <span className="text-[10px] font-bold tracking-[0.15em] text-zinc-300">Repository</span>
-                <span className="text-[10px] font-bold tracking-[0.15em] text-zinc-300">Source URL</span>
-                <span className="text-[10px] font-bold tracking-[0.15em] text-zinc-300">Status</span>
-                <span className="text-[10px] font-bold tracking-[0.15em] text-zinc-300">New Incidents</span>
+              <div className="grid grid-cols-[1.5fr_2fr_100px_120px_40px] items-center pb-4 px-6 border-b border-white/10 mb-2">
+                <span className="text-xs font-bold tracking-[0.1em] text-zinc-300">Repository</span>
+                <span className="text-xs font-bold tracking-[0.1em] text-zinc-300">Source URL</span>
+                <span className="text-xs font-bold tracking-[0.1em] text-zinc-300">Status</span>
+                <span className="text-xs font-bold tracking-[0.1em] text-zinc-300">New Incidents</span>
                 <span className="w-4" />
               </div>
 
@@ -366,15 +366,15 @@ function Dashboard() {
                   <div key={app.id}>
                     <div
                       onClick={() => router.push(`/dashboard/${app.id}`)}
-                      className="group grid grid-cols-[1.5fr_2fr_100px_120px_40px] items-center rounded-lg px-6 py-4 bg-white/5 transition-all hover:bg-white/10 border-b border-white/10 last:border-0 cursor-pointer"
+                      className="group grid grid-cols-[1.5fr_2fr_100px_120px_40px] items-center rounded-lg px-6 py-5 transition-all hover:bg-white/[0.08] border-b border-white/10 last:border-0 cursor-pointer"
                     >
                       {/* Name + visibility */}
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-sm font-semibold text-white truncate">
+                        <span className="text-base font-semibold text-white truncate">
                           {app.repo_name}
                         </span>
                         <span
-                          className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${
+                          className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-bold tracking-widest ${
                             app.private
                               ? "bg-zinc-700 text-zinc-300"
                               : "bg-blue-900/40 text-blue-300"
@@ -392,12 +392,12 @@ function Dashboard() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-xs font-medium text-zinc-300 hover:text-white transition-colors truncate block"
+                            className="text-sm font-medium text-zinc-300 hover:text-white transition-colors truncate block"
                           >
                             {app.live_url.replace("https://", "")}
                           </a>
                         ) : (
-                          <span className="text-xs text-zinc-500">N/A</span>
+                          <span className="text-sm text-zinc-500">N/A</span>
                         )}
                       </div>
 
@@ -405,7 +405,7 @@ function Dashboard() {
                       <div>{statusBadge(app.status)}</div>
 
                       {/* New Incidents Count */}
-                      <div className="text-xs font-medium text-zinc-300 pl-4 mt-2">
+                      <div className="flex items-center text-sm text-zinc-300 pl-4">
                         {app.unresolved_count ?? 0}
                       </div>
 
@@ -420,7 +420,7 @@ function Dashboard() {
                           className="text-zinc-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 p-1"
                           title="Remove project"
                         >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
@@ -431,12 +431,12 @@ function Dashboard() {
               </div>
 
               {/* Add Project — full width */}
-              <div className="mt-6">
+              <div className="mt-8">
                 <button
                   onClick={openRepoDialog}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 py-2 text-[11px] text-white transition-all hover:bg-white/20 hover:border-white/40 font-accent"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/15 px-4 py-3.5 text-sm text-white transition-all hover:bg-white/20 hover:border-white/40 font-accent"
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   Add New Project
@@ -454,16 +454,16 @@ function Dashboard() {
           onClick={() => setShowSettingsModal(false)}
         >
           <div
-            className="w-full max-w-md mx-4 rounded-2xl border border-white/15 bg-[#0c0c0e] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
+            className="w-full max-w-lg mx-4 rounded-2xl border border-white/15 bg-[#0c0c0e] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-              <h3 className="text-sm font-bold text-white tracking-widest">Settings</h3>
+            <div className="flex items-center justify-between px-8 py-6 border-b border-white/10">
+              <h3 className="text-base font-bold text-white tracking-widest">Settings</h3>
               <button
                 onClick={() => setShowSettingsModal(false)}
                 className="text-zinc-400 hover:text-white transition-colors p-1"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
@@ -525,16 +525,16 @@ function Dashboard() {
           onClick={() => setShowRepoDialog(false)}
         >
           <div
-            className="w-full max-w-2xl mx-4 rounded-2xl border border-white/15 bg-[#0c0c0e] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
+            className="w-full max-w-3xl mx-4 rounded-2xl border border-white/15 bg-[#0c0c0e] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-              <h3 className="text-sm font-bold text-white tracking-widest">Select a Repository</h3>
+            <div className="flex items-center justify-between px-8 py-6 border-b border-white/10">
+              <h3 className="text-base font-bold text-white tracking-widest">Select a Repository</h3>
               <button
                 onClick={() => setShowRepoDialog(false)}
                 className="text-zinc-400 hover:text-white transition-colors p-1"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
